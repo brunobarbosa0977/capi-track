@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CAPI Track — Conversions API</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #3fb950;
+      --green-dark: #238636;
+      --red: #f85149;
+      --yellow: #d29922;
+      --blue: #58a6ff;
+      --purple: #bc8cff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* ── LOGIN ── */
+    #login-screen {
+      display: flex; align-items: center; justify-content: center; min-height: 100vh;
+    }
+    .login-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 40px; width: 100%; max-width: 380px;
+    }
+    .login-box h1 { font-size: 22px; margin-bottom: 6px; }
+    .login-box p { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+
+    /* ── LAYOUT ── */
+    #app { display: none; }
+    .sidebar {
+      position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 20px 0; z-index: 100;
+    }
+    .sidebar-logo {
+      padding: 0 20px 24px; border-bottom: 1px solid var(--border); margin-bottom: 12px;
+    }
+    .sidebar-logo span { font-size: 16px; font-weight: 700; color: var(--green); }
+    .sidebar-logo small { display: block; font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+      cursor: pointer; color: var(--muted); font-size: 14px; border-radius: 0;
+      transition: all 0.15s; border-left: 3px solid transparent;
+    }
+    .nav-item:hover { color: var(--text); background: var(--surface2); }
+    .nav-item.active { color: var(--green); border-left-color: var(--green); background: rgba(63,185,80,0.08); }
+    .sidebar-bottom { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); }
+    .sidebar-bottom small { color: var(--muted); font-size: 12px; display: block; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .main { margin-left: 220px; padding: 32px; min-height: 100vh; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── COMPONENTS ── */
+    h2 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+    .page-subtitle { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px;
+    }
+    .cards-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+    .yellow { color: var(--yellow); }
+
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 500; }
+    input, select {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px;
+      outline: none; transition: border 0.15s;
+    }
+    input:focus, select:focus { border-color: var(--green); }
+    input::placeholder { color: var(--muted); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px;
+      border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 500;
+      transition: all 0.15s; text-decoration: none;
+    }
+    .btn-primary { background: var(--green); color: #000; width: 100%; justify-content: center; }
+    .btn-primary:hover { background: #4ac45f; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--green); color: var(--green); }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none; }
+    .alert.show { display: block; }
+    .alert-success { background: rgba(63,185,80,0.12); border: 1px solid rgba(63,185,80,0.3); color: var(--green); }
+    .alert-error { background: rgba(248,81,73,0.12); border: 1px solid rgba(248,81,73,0.3); color: var(--red); }
+    .alert-info { background: rgba(88,166,255,0.12); border: 1px solid rgba(88,166,255,0.3); color: var(--blue); }
+
+    /* ── CHART ── */
+    .chart-area { height: 160px; display: flex; align-items: flex-end; gap: 8px; padding-top: 16px; }
+    .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .bars { display: flex; gap: 2px; align-items: flex-end; height: 120px; }
+    .bar { width: 14px; border-radius: 3px 3px 0 0; min-height: 2px; transition: height 0.3s; }
+    .bar.sent { background: var(--green); }
+    .bar.err { background: var(--red); }
+    .bar-label { font-size: 10px; color: var(--muted); }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 14px; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+    .badge-sent { background: rgba(63,185,80,0.15); color: var(--green); }
+    .badge-error { background: rgba(248,81,73,0.15); color: var(--red); }
+    .badge-manual { background: rgba(88,166,255,0.15); color: var(--blue); }
+    .badge-bulk { background: rgba(188,140,255,0.15); color: var(--purple); }
+    .badge-webhook { background: rgba(210,153,34,0.15); color: var(--yellow); }
+
+    /* ── WEBHOOK BOX ── */
+    .webhook-box {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px 16px; font-family: monospace; font-size: 12px; color: var(--blue);
+      word-break: break-all; margin-top: 16px; position: relative;
+    }
+    .copy-btn {
+      position: absolute; top: 10px; right: 10px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px;
+      font-size: 11px; cursor: pointer; color: var(--muted);
+    }
+    .copy-btn:hover { color: var(--green); border-color: var(--green); }
+
+    .payload-box {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px 16px; font-family: monospace; font-size: 12px; color: var(--muted);
+      margin-top: 12px; line-height: 1.7;
+    }
+
+    /* ── BULK UPLOAD ── */
+    .drop-area {
+      border: 2px dashed var(--border); border-radius: 10px; padding: 40px;
+      text-align: center; cursor: pointer; transition: all 0.2s;
+    }
+    .drop-area:hover, .drop-area.dragover { border-color: var(--green); background: rgba(63,185,80,0.05); }
+    .drop-area svg { margin-bottom: 12px; }
+    .drop-area p { color: var(--muted); font-size: 14px; }
+    .drop-area strong { color: var(--text); }
+    #bulk-file-input { display: none; }
+
+    .bulk-preview { margin-top: 16px; }
+    .bulk-result { margin-top: 16px; }
+
+    .progress-bar-wrap { background: var(--surface2); border-radius: 8px; height: 8px; margin: 12px 0; overflow: hidden; }
+    .progress-bar { height: 100%; background: var(--green); border-radius: 8px; width: 0%; transition: width 0.3s; }
+
+    /* ── TABS ── */
+    .tabs { display: flex; gap: 4px; margin-bottom: 24px; background: var(--surface2); border-radius: 8px; padding: 4px; width: fit-content; }
+    .tab { padding: 7px 18px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all 0.15s; }
+    .tab.active { background: var(--surface); color: var(--text); }
+
+    /* ── FILTER ── */
+    .filter-row { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .filter-row select { width: auto; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .cards-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .sidebar { transform: translateX(-100%); }
+      .main { margin-left: 0; padding: 16px; }
+      .cards-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════ LOGIN ═══════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>🎯 CAPI Track</h1>
+    <p>Meta Conversions API — Painel de Conversões</p>
+    <div class="alert alert-error" id="login-error"></div>
+    <div class="form-group">
+      <label>Senha de acesso</label>
+      <input type="password" id="login-password" placeholder="Digite sua senha" autocomplete="current-password"/>
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
+    <p style="font-size:12px;color:var(--muted);margin-top:16px;text-align:center;">
+      Primeiro acesso? Qualquer senha cadastra o sistema.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════ APP ═══════════════════════ -->
+<div id="app">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <span>CAPI Track</span>
+      <small>Conversion API</small>
+    </div>
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('send')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Envio
+    </div>
+    <div class="nav-item" onclick="showPage('events')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Eventos
+    </div>
+    <div class="nav-item" onclick="showPage('config')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Configurações
+    </div>
+    <div class="sidebar-bottom">
+      <small id="sidebar-user">—</small>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px;padding:7px" onclick="logout()">Sair</button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div id="page-dashboard" class="page active">
+      <h2>Dashboard</h2>
+      <p class="page-subtitle">Visão geral das conversões enviadas para a Meta</p>
+
+      <div class="cards-row">
+        <div class="card">
+          <div class="stat-label">Eventos Hoje</div>
+          <div class="stat-value green" id="stat-events">0</div>
+          <div class="stat-sub">Processados</div>
+        </div>
+        <div class="card">
+          <div class="stat-label">Match Rate 30d</div>
+          <div class="stat-value green" id="stat-match">0.0%</div>
+          <div class="stat-sub" id="stat-match-sub">—</div>
+        </div>
+        <div class="card">
+          <div class="stat-label">Valor Hoje</div>
+          <div class="stat-value" id="stat-value">R$ 0</div>
+          <div class="stat-sub">Em compras enviadas</div>
+        </div>
+        <div class="card">
+          <div class="stat-label">Erros</div>
+          <div class="stat-value" id="stat-errors">0</div>
+          <div class="stat-sub">Hoje</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div>
+            <div style="font-weight:600;margin-bottom:2px">Eventos — Últimos 7 dias</div>
+            <div style="font-size:12px;color:var(--muted)">Enviados vs erros por dia</div>
+          </div>
+          <div style="display:flex;gap:16px;font-size:12px">
+            <span style="color:var(--green)">● Enviados</span>
+            <span style="color:var(--red)">● Erros</span>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-area"></div>
+      </div>
+    </div>
+
+    <!-- ═══ ENVIO ═══ -->
+    <div id="page-send" class="page">
+      <h2>Envio de Conversões</h2>
+      <p class="page-subtitle">Dispare eventos de compra para o pixel da Meta</p>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('manual')">Envio Manual</div>
+        <div class="tab" onclick="switchTab('bulk')">Disparo em Massa</div>
+      </div>
+
+      <!-- Manual -->
+      <div id="tab-manual">
+        <div class="card" style="max-width:540px">
+          <div class="alert alert-success" id="send-success"></div>
+          <div class="alert alert-error" id="send-error"></div>
+          <div class="form-group">
+            <label>Nome do Lead</label>
+            <input type="text" id="send-name" placeholder="Nome completo do cliente"/>
+          </div>
+          <div class="form-group">
+            <label>Telefone *</label>
+            <input type="text" id="send-phone" placeholder="55119999999999"/>
+          </div>
+          <div class="form-group">
+            <label>E-mail (opcional)</label>
+            <input type="email" id="send-email" placeholder="email@cliente.com"/>
+          </div>
+          <div class="form-group">
+            <label>Valor da Venda (R$) *</label>
+            <input type="number" id="send-value" placeholder="197.00" step="0.01"/>
+          </div>
+          <button class="btn btn-primary" id="send-btn" onclick="doSend()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Enviar para Meta
+          </button>
+        </div>
+      </div>
+
+      <!-- Bulk -->
+      <div id="tab-bulk" style="display:none">
+        <div class="card" style="max-width:640px">
+          <div class="alert alert-info show" style="margin-bottom:20px">
+            📋 O arquivo deve ter as colunas: <strong>nome, telefone, email, valor</strong> (ou em inglês: name, phone, email, value). Email é opcional.
+          </div>
+          <div class="alert alert-success" id="bulk-success"></div>
+          <div class="alert alert-error" id="bulk-error"></div>
+
+          <div class="drop-area" id="drop-area" onclick="document.getElementById('bulk-file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+            <svg width="40" height="40" fill="none" stroke="var(--muted)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p><strong>Clique ou arraste</strong> um arquivo aqui</p>
+            <p style="font-size:12px;margin-top:4px">CSV ou Excel (.xlsx)</p>
+          </div>
+          <input type="file" id="bulk-file-input" accept=".csv,.xlsx,.xls" onchange="fileSelected(this)"/>
+
+          <div id="bulk-preview" class="bulk-preview" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px">
+              <div style="font-weight:600" id="bulk-preview-title">—</div>
+              <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px" onclick="clearFile()">Trocar arquivo</button>
+            </div>
+            <div class="table-wrap" style="max-height:200px;overflow-y:auto">
+              <table id="bulk-preview-table">
+                <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Valor</th></tr></thead>
+                <tbody id="bulk-preview-body"></tbody>
+              </table>
+            </div>
+            <div style="margin-top:16px">
+              <div class="progress-bar-wrap" id="bulk-progress-wrap" style="display:none">
+                <div class="progress-bar" id="bulk-progress-bar"></div>
+              </div>
+              <button class="btn btn-primary" id="bulk-send-btn" onclick="doBulkSend()">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                Disparar Todos para Meta
+              </button>
+            </div>
+          </div>
+
+          <div id="bulk-result" class="bulk-result" style="display:none">
+            <div class="card" style="background:var(--surface2);margin-top:0">
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center">
+                <div><div style="font-size:22px;font-weight:700;color:var(--text)" id="res-total">0</div><div style="font-size:11px;color:var(--muted)">TOTAL</div></div>
+                <div><div style="font-size:22px;font-weight:700;color:var(--green)" id="res-sent">0</div><div style="font-size:11px;color:var(--muted)">ENVIADOS</div></div>
+                <div><div style="font-size:22px;font-weight:700;color:var(--red)" id="res-errors">0</div><div style="font-size:11px;color:var(--muted)">ERROS</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ EVENTOS ═══ -->
+    <div id="page-events" class="page">
+      <h2>Eventos</h2>
+      <p class="page-subtitle">Histórico de todas as conversões disparadas</p>
+
+      <div class="filter-row">
+        <select id="events-filter" onchange="loadEvents()">
+          <option value="all">Todos os status</option>
+          <option value="sent">Enviados</option>
+          <option value="error">Erros</option>
+        </select>
+        <button class="btn btn-secondary" onclick="loadEvents()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          Atualizar
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>Valor</th>
+                <th>Origem</th>
+                <th>Status</th>
+                <th>Detalhe</th>
+              </tr>
+            </thead>
+            <tbody id="events-body">
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+          <span style="font-size:12px;color:var(--muted)" id="events-count">—</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px" id="events-prev" onclick="changePage(-1)">← Anterior</button>
+            <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px" id="events-next" onclick="changePage(1)">Próxima →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ CONFIG ═══ -->
+    <div id="page-config" class="page">
+      <h2>Configurações</h2>
+      <p class="page-subtitle">Pixel da Meta e webhook</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:900px">
+        <div>
+          <div class="card">
+            <div style="font-weight:600;margin-bottom:16px">Pixel da Meta</div>
+            <div class="alert alert-success" id="config-success"></div>
+            <div class="alert alert-error" id="config-error"></div>
+            <div class="form-group">
+              <label>Nome do Pixel (opcional)</label>
+              <input type="text" id="cfg-name" placeholder="Ex: Glivia Principal"/>
+            </div>
+            <div class="form-group">
+              <label>Pixel ID *</label>
+              <input type="text" id="cfg-pixel" placeholder="1573948270351432"/>
+            </div>
+            <div class="form-group">
+              <label>Access Token *</label>
+              <input type="password" id="cfg-token" placeholder="Cole seu Access Token aqui"/>
+            </div>
+            <button class="btn btn-primary" onclick="saveConfig()">Salvar Configurações</button>
+            <p style="font-size:11px;color:var(--muted);margin-top:12px">
+              Gere o token em: Gerenciador de Eventos → Pixel → Configurações → API de Conversões
+            </p>
+          </div>
+
+          <div class="card" style="margin-top:16px">
+            <div style="font-weight:600;margin-bottom:16px">Alterar Senha</div>
+            <div class="alert alert-success" id="pwd-success"></div>
+            <div class="form-group">
+              <label>Nova senha</label>
+              <input type="password" id="new-password" placeholder="Mínimo 4 caracteres"/>
+            </div>
+            <button class="btn btn-secondary" onclick="changePassword()">Alterar Senha</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div style="font-weight:600;margin-bottom:8px">Webhook para automação</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+              Envie um POST para esta URL com os dados do lead para disparar automaticamente (ex: via N8n, Make, Manychat).
+            </p>
+            <div class="webhook-box" id="webhook-url">
+              Carregando...
+              <button class="copy-btn" onclick="copyWebhook()">Copiar</button>
+            </div>
+            <div style="margin-top:16px;font-size:12px;color:var(--muted);font-weight:500">Formato esperado (POST JSON):</div>
+            <div class="payload-box">
+{<br>
+&nbsp;&nbsp;"name": "Nome do Lead",<br>
+&nbsp;&nbsp;"phone": "5511999999999",<br>
+&nbsp;&nbsp;"email": "email@exemplo.com",<br>
+&nbsp;&nbsp;"value": 197<br>
+}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let authToken = localStorage.getItem('capi_token') || '';
+let eventsPage = 1;
+let bulkRows = [];
+let bulkFile = null;
+
+// ═══════════════════════════════════════════════════════
+//  API HELPER
+// ═══════════════════════════════════════════════════════
+async function api(method, path, body, isFormData = false) {
+  const opts = {
+    method,
+    headers: { 'x-auth-token': authToken }
+  };
+  if (body && !isFormData) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  } else if (body) {
+    opts.body = body;
+  }
+  const res = await fetch(path, opts);
+  if (res.status === 401) { logout(); return null; }
+  return res.json();
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════════════════════
+async function doLogin() {
+  const pw = document.getElementById('login-password').value;
+  if (!pw) return;
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pw })
+  });
+  const data = await res.json();
+  if (data.token) {
+    authToken = data.token;
+    localStorage.setItem('capi_token', authToken);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    initApp();
+  } else {
+    showAlert('login-error', data.error || 'Erro ao entrar');
+  }
+}
+
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function logout() {
+  localStorage.removeItem('capi_token');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+async function initApp() {
+  if (authToken) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    loadStats();
+    loadWebhookUrl();
+    loadConfig();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'dashboard') loadStats();
+  if (name === 'events') { eventsPage = 1; loadEvents(); }
+  if (name === 'config') { loadWebhookUrl(); loadConfig(); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════
+async function loadStats() {
+  const data = await api('GET', '/api/stats');
+  if (!data) return;
+
+  document.getElementById('stat-events').textContent = data.eventsToday;
+  document.getElementById('stat-match').textContent = data.matchRate + '%';
+  document.getElementById('stat-match-sub').textContent = `${data.sent30} enviados / ${data.last30} total (30d)`;
+  document.getElementById('stat-value').textContent = 'R$ ' + Number(data.valueToday).toFixed(2).replace('.', ',');
+
+  const errEl = document.getElementById('stat-errors');
+  errEl.textContent = data.errorsToday;
+  errEl.className = 'stat-value ' + (data.errorsToday > 0 ? 'red' : 'green');
+
+  renderChart(data.chart);
+}
+
+function renderChart(chart) {
+  const area = document.getElementById('chart-area');
+  area.innerHTML = '';
+  if (!chart.length) { area.innerHTML = '<p style="color:var(--muted);font-size:13px">Sem dados ainda</p>'; return; }
+
+  const maxVal = Math.max(...chart.map(d => d.sent + d.errors), 1);
+  chart.forEach(d => {
+    const sentH = Math.max((d.sent / maxVal) * 120, d.sent > 0 ? 4 : 0);
+    const errH = Math.max((d.errors / maxVal) * 120, d.errors > 0 ? 4 : 0);
+    const label = d.day.slice(5); // MM-DD
+    area.innerHTML += `
+      <div class="bar-group">
+        <div class="bars">
+          <div class="bar sent" style="height:${sentH}px" title="${d.sent} enviados"></div>
+          <div class="bar err" style="height:${errH}px" title="${d.errors} erros"></div>
+        </div>
+        <div class="bar-label">${label}</div>
+      </div>`;
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  SEND MANUAL
+// ═══════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('tab-manual').style.display = tab === 'manual' ? 'block' : 'none';
+  document.getElementById('tab-bulk').style.display = tab === 'bulk' ? 'block' : 'none';
+}
+
+async function doSend() {
+  const name = document.getElementById('send-name').value.trim();
+  const phone = document.getElementById('send-phone').value.trim();
+  const email = document.getElementById('send-email').value.trim();
+  const value = document.getElementById('send-value').value;
+
+  hideAlerts(['send-success', 'send-error']);
+  if (!phone || !value) return showAlert('send-error', 'Telefone e valor são obrigatórios');
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  const res = await api('POST', '/api/send', { name, phone, email, value: parseFloat(value) });
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar para Meta';
+
+  if (res?.success) {
+    showAlert('send-success', `✅ Conversão enviada com sucesso! (fbtrace: ${res.fbtrace_id || '—'})`);
+    document.getElementById('send-name').value = '';
+    document.getElementById('send-phone').value = '';
+    document.getElementById('send-email').value = '';
+    document.getElementById('send-value').value = '';
+  } else {
+    showAlert('send-error', '❌ ' + (res?.error || 'Erro desconhecido'));
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  BULK
+// ═══════════════════════════════════════════════════════
+function dragOver(e) { e.preventDefault(); document.getElementById('drop-area').classList.add('dragover'); }
+function dragLeave() { document.getElementById('drop-area').classList.remove('dragover'); }
+function dropFile(e) {
+  e.preventDefault();
+  dragLeave();
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function fileSelected(input) {
+  if (input.files[0]) processFile(input.files[0]);
+}
+
+async function processFile(file) {
+  bulkFile = file;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const allowedExt = ['csv', 'xlsx', 'xls'];
+  if (!allowedExt.includes(ext)) {
+    showAlert('bulk-error', 'Formato inválido. Use CSV ou XLSX.');
+    return;
+  }
+
+  // Preview using FileReader + parse in backend (just show raw data)
+  const formData = new FormData();
+  formData.append('file', file);
+
+  // We call backend to parse and return rows for preview
+  const res = await fetch('/api/preview-bulk', {
+    method: 'POST',
+    headers: { 'x-auth-token': authToken },
+    body: formData
+  });
+  const data = await res.json();
+  if (data.error) { showAlert('bulk-error', data.error); return; }
+
+  bulkRows = data.rows;
+  showBulkPreview(file.name, bulkRows);
+}
+
+function showBulkPreview(filename, rows) {
+  document.getElementById('bulk-preview').style.display = 'block';
+  document.getElementById('bulk-result').style.display = 'none';
+  document.getElementById('bulk-preview-title').textContent = `📄 ${filename} — ${rows.length} leads encontrados`;
+  const tbody = document.getElementById('bulk-preview-body');
+  tbody.innerHTML = rows.slice(0, 20).map(r => `
+    <tr>
+      <td>${r.name || '—'}</td>
+      <td>${r.phone || '<span style="color:var(--red)">⚠ ausente</span>'}</td>
+      <td>${r.email || '—'}</td>
+      <td>${r.value ? 'R$ ' + Number(r.value).toFixed(2) : '<span style="color:var(--red)">⚠ ausente</span>'}</td>
+    </tr>`).join('');
+  if (rows.length > 20) {
+    tbody.innerHTML += `<tr><td colspan="4" style="color:var(--muted);text-align:center">... e mais ${rows.length - 20} leads</td></tr>`;
+  }
+  hideAlerts(['bulk-error', 'bulk-success']);
+}
+
+function clearFile() {
+  bulkFile = null; bulkRows = [];
+  document.getElementById('bulk-preview').style.display = 'none';
+  document.getElementById('bulk-result').style.display = 'none';
+  document.getElementById('bulk-file-input').value = '';
+  hideAlerts(['bulk-error', 'bulk-success']);
+}
+
+async function doBulkSend() {
+  if (!bulkFile) return;
+  const btn = document.getElementById('bulk-send-btn');
+  const progressWrap = document.getElementById('bulk-progress-wrap');
+  const progressBar = document.getElementById('bulk-progress-bar');
+
+  btn.disabled = true;
+  btn.textContent = 'Disparando...';
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '10%';
+
+  const formData = new FormData();
+  formData.append('file', bulkFile);
+
+  // Simulate progress
+  let prog = 10;
+  const interval = setInterval(() => {
+    prog = Math.min(prog + 5, 85);
+    progressBar.style.width = prog + '%';
+  }, 400);
+
+  const res = await api('POST', '/api/send-bulk', formData, true);
+  clearInterval(interval);
+  progressBar.style.width = '100%';
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Disparar Todos para Meta';
+
+  if (!res) return;
+  if (res.error) { showAlert('bulk-error', res.error); progressWrap.style.display = 'none'; return; }
+
+  document.getElementById('bulk-result').style.display = 'block';
+  document.getElementById('res-total').textContent = res.total;
+  document.getElementById('res-sent').textContent = res.sent;
+  document.getElementById('res-errors').textContent = res.errors;
+  showAlert('bulk-success', `✅ Disparo finalizado! ${res.sent} enviados, ${res.errors} erros.`);
+}
+
+// ═══════════════════════════════════════════════════════
+//  EVENTS
+// ═══════════════════════════════════════════════════════
+async function loadEvents() {
+  const status = document.getElementById('events-filter').value;
+  const data = await api('GET', `/api/events?page=${eventsPage}&status=${status}`);
+  if (!data) return;
+
+  const tbody = document.getElementById('events-body');
+  if (!data.rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">Nenhum evento encontrado</td></tr>';
+    document.getElementById('events-count').textContent = '0 eventos';
+    return;
+  }
+
+  document.getElementById('events-count').textContent = `${data.total} eventos — página ${data.page}`;
+  tbody.innerHTML = data.rows.map(r => `
+    <tr>
+      <td style="white-space:nowrap;color:var(--muted);font-size:12px">${r.created_at}</td>
+      <td>${r.name || '—'}</td>
+      <td>${r.phone || '—'}</td>
+      <td>R$ ${Number(r.value).toFixed(2)}</td>
+      <td><span class="badge badge-${r.source}">${r.source}</span></td>
+      <td><span class="badge badge-${r.status}">${r.status === 'sent' ? 'Enviado' : 'Erro'}</span></td>
+      <td style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis">${r.error_msg || '✓'}</td>
+    </tr>`).join('');
+
+  document.getElementById('events-prev').disabled = eventsPage <= 1;
+  document.getElementById('events-next').disabled = data.rows.length < 50;
+}
+
+function changePage(dir) {
+  eventsPage = Math.max(1, eventsPage + dir);
+  loadEvents();
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════
+async function loadConfig() {
+  const data = await api('GET', '/api/config');
+  if (!data) return;
+  document.getElementById('cfg-name').value = data.pixel_name || '';
+  document.getElementById('cfg-pixel').value = data.pixel_id || '';
+  document.getElementById('cfg-token').value = data.access_token || '';
+}
+
+async function saveConfig() {
+  hideAlerts(['config-success', 'config-error']);
+  const res = await api('POST', '/api/config', {
+    pixel_name: document.getElementById('cfg-name').value,
+    pixel_id: document.getElementById('cfg-pixel').value.trim(),
+    access_token: document.getElementById('cfg-token').value.trim()
+  });
+  if (res?.ok) showAlert('config-success', '✅ Configurações salvas com sucesso!');
+  else showAlert('config-error', res?.error || 'Erro ao salvar');
+}
+
+async function changePassword() {
+  hideAlerts(['pwd-success']);
+  const np = document.getElementById('new-password').value;
+  const res = await api('POST', '/api/change-password', { new_password: np });
+  if (res?.ok) { showAlert('pwd-success', '✅ Senha alterada!'); document.getElementById('new-password').value = ''; }
+}
+
+// ═══════════════════════════════════════════════════════
+//  WEBHOOK
+// ═══════════════════════════════════════════════════════
+async function loadWebhookUrl() {
+  const data = await api('GET', '/api/webhook-url');
+  if (data?.url) document.getElementById('webhook-url').innerHTML =
+    data.url + `<button class="copy-btn" onclick="copyWebhook('${data.url}')">Copiar</button>`;
+}
+
+function copyWebhook(url) {
+  const el = document.getElementById('webhook-url');
+  const text = url || el.textContent.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = el.querySelector('.copy-btn');
+    btn.textContent = 'Copiado!';
+    setTimeout(() => btn.textContent = 'Copiar', 2000);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+function showAlert(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 6000);
+}
+function hideAlerts(ids) { ids.forEach(id => document.getElementById(id).classList.remove('show')); }
+
+// ─── Boot ──────────────────────────────────────────────
+if (authToken) initApp();
+</script>
+</body>
+</html>
