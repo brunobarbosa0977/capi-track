@@ -12,6 +12,10 @@ function normalizePhone(phone) {
   return p;
 }
 
+function generateEventId() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
 async function sendPurchase(cfg, { name, phone, email, value }) {
   const { pixel_id, access_token } = cfg;
   const userData = {};
@@ -28,9 +32,13 @@ async function sendPurchase(cfg, { name, phone, email, value }) {
     data: [{
       event_name: 'Purchase',
       event_time: Math.floor(Date.now() / 1000),
+      event_id: generateEventId(),
       action_source: 'website',
       user_data: userData,
-      custom_data: { currency: 'BRL', value: parseFloat(value) }
+      custom_data: {
+        currency: 'BRL',
+        value: parseFloat(value)
+      }
     }]
   };
 
