@@ -42,7 +42,7 @@ async function sendPurchase(cfg, { name, phone, email, value }) {
       body: JSON.stringify(payload)
     });
     const data = await response.json();
-    if (data.error) return { success: false, error: data.error.message };
+    if (data.error) return { success: false, error: `${data.error.message} (code: ${data.error.code}, subcode: ${data.error.error_subcode || 'n/a'})` };
     return { success: true, events_received: data.events_received, fbtrace_id: data.fbtrace_id };
   } catch (err) {
     return { success: false, error: err.message };
