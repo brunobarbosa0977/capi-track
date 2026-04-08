@@ -22,7 +22,6 @@ function auth(req, res, next) {
   next();
 }
 
-// LOGIN
 app.post('/api/login', (req, res) => {
   const { password } = req.body;
   const cfg = db.getConfig();
@@ -42,7 +41,6 @@ app.post('/api/change-password', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// PIXELS
 app.get('/api/pixels', auth, (req, res) => {
   const pixels = db.getPixels().map(p => ({ id: p.id, name: p.name, pixel_id: p.pixel_id, created_at: p.created_at }));
   res.json(pixels);
@@ -60,49 +58,35 @@ app.delete('/api/pixels/:id', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// WEBHOOK URL
 app.get('/api/webhook-url', auth, (req, res) => {
   const cfg = db.getConfig();
   const base = process.env.BASE_URL || `http://localhost:${PORT}`;
   res.json({ url: `${base}/webhook/${cfg.webhook_token}` });
 });
 
-// WEBHOOK (recebe por pixel_id no body)
 app.post('/webhook/:token', async (req, res) => {
   const cfg = db.getConfig();
   if (!cfg || req.params.token !== cfg.webhook_token) return res.status(403).json({ error: 'Webhook invalido' });
-  const { name, phone, email, value, pixel_id } = req.body;
+  const { name, phone, email, value, gender, cep, pixel_id } = req.body;
   if (!phone || !value) return res.status(400).json({ error: 'phone e value sao obrigatorios' });
-
-  let pixelCfg;
-  if (pixel_id) {
-    pixelCfg = db.getPixelById(pixel_id);
-  } else {
-    const pixels = db.getPixels();
-    pixelCfg = pixels[0];
-  }
+  let pixelCfg = pixel_id ? db.getPixelById(pixel_id) : db.getPixels()[0];
   if (!pixelCfg) return res.status(400).json({ error: 'Nenhum pixel configurado' });
-
-  const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value });
-  db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
+  const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
+  db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
   res.json(result);
 });
 
-// SEND MANUAL
 app.post('/api/send', auth, async (req, res) => {
-  const { name, phone, email, value, pixel_id } = req.body;
+  const { name, phone, email, value, gender, cep, pixel_id } = req.body;
   if (!phone || !value) return res.status(400).json({ error: 'Telefone e valor sao obrigatorios' });
   if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
-
   const pixelCfg = db.getPixelById(pixel_id);
   if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
-
-  const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value });
-  db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
+  const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
+  db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
   res.json(result);
 });
 
-// PREVIEW BULK
 app.post('/api/preview-bulk', auth, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
   const ext = req.file.originalname.split('.').pop().toLowerCase();
@@ -119,19 +103,24 @@ app.post('/api/preview-bulk', auth, upload.single('file'), (req, res) => {
   } catch (e) { return res.status(400).json({ error: 'Erro ao ler arquivo: ' + e.message }); }
   const normalize = (row) => {
     const k = Object.keys(row).reduce((acc, key) => { acc[key.toLowerCase().trim()] = row[key]; return acc; }, {});
-    return { name: k.nome || k.name || '', phone: k.telefone || k.phone || k.fone || '', email: k.email || '', value: parseFloat(k.valor || k.value || 0) || 0 };
+    return {
+      name: k.nome || k.name || '',
+      phone: k.telefone || k.phone || k.fone || '',
+      email: k.email || '',
+      value: parseFloat(k.valor || k.value || 0) || 0,
+      gender: k.genero || k.gender || k.sexo || '',
+      cep: k.cep || k.zip || ''
+    };
   };
   res.json({ rows: rows.map(normalize), total: rows.length });
 });
 
-// SEND BULK
 app.post('/api/send-bulk', auth, upload.single('file'), async (req, res) => {
   const pixel_id = req.body.pixel_id;
   if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
   const pixelCfg = db.getPixelById(pixel_id);
   if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
-
   const ext = req.file.originalname.split('.').pop().toLowerCase();
   let rows = [];
   try {
@@ -144,12 +133,17 @@ app.post('/api/send-bulk', auth, upload.single('file'), async (req, res) => {
       rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
     } else { return res.status(400).json({ error: 'Formato invalido.' }); }
   } catch (e) { return res.status(400).json({ error: 'Erro ao ler: ' + e.message }); }
-
   const normalize = (row) => {
     const k = Object.keys(row).reduce((acc, key) => { acc[key.toLowerCase().trim()] = row[key]; return acc; }, {});
-    return { name: k.nome || k.name || '', phone: k.telefone || k.phone || k.fone || '', email: k.email || '', value: parseFloat(k.valor || k.value || 0) || 0 };
+    return {
+      name: k.nome || k.name || '',
+      phone: k.telefone || k.phone || k.fone || '',
+      email: k.email || '',
+      value: parseFloat(k.valor || k.value || 0) || 0,
+      gender: k.genero || k.gender || k.sexo || '',
+      cep: k.cep || k.zip || ''
+    };
   };
-
   const results = [];
   for (const raw of rows) {
     const lead = normalize(raw);
@@ -162,12 +156,10 @@ app.post('/api/send-bulk', auth, upload.single('file'), async (req, res) => {
   res.json({ total: results.length, sent: results.filter(r => r.success).length, errors: results.filter(r => !r.success).length });
 });
 
-// EVENTS
 app.get('/api/events', auth, (req, res) => {
   res.json(db.getEvents({ page: parseInt(req.query.page || 1), status: req.query.status, pixel_id: req.query.pixel_id }));
 });
 
-// STATS
 app.get('/api/stats', auth, (req, res) => res.json(db.getStats(req.query.pixel_id)));
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
