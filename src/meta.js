@@ -12,15 +12,33 @@ function normalizePhone(phone) {
   return p;
 }
 
-async function sendPurchase(cfg, { name, phone, email, value }) {
+function normalizeCep(cep) {
+  return cep.toString().replace(/\D/g, '').padStart(8, '0');
+}
+
+function normalizeGender(gender) {
+  if (!gender) return null;
+  const g = gender.toString().trim().toLowerCase();
+  if (g === 'm' || g === 'masculino' || g === 'male') return 'm';
+  if (g === 'f' || g === 'feminino' || g === 'female') return 'f';
+  return null;
+}
+
+async function sendPurchase(cfg, { name, phone, email, value, gender, cep }) {
   const { pixel_id, access_token } = cfg;
   const userData = {};
+
   if (phone) userData.ph = [hash(normalizePhone(phone))];
   if (email) userData.em = [hash(email)];
   if (name) {
     const parts = name.trim().split(' ');
     userData.fn = [hash(parts[0])];
     if (parts.length > 1) userData.ln = [hash(parts.slice(1).join(' '))];
+  }
+  if (cep) userData.zp = [hash(normalizeCep(cep))];
+  if (gender) {
+    const g = normalizeGender(gender);
+    if (g) userData.ge = [hash(g)];
   }
   userData.country = [hash('br')];
 
@@ -40,10 +58,6 @@ async function sendPurchase(cfg, { name, phone, email, value }) {
     }]
   };
 
-  console.log('=== META CAPI REQUEST ===');
-  console.log('Pixel ID:', pixel_id);
-  console.log('Payload:', JSON.stringify(payload, null, 2));
-
   try {
     const url = `https://graph.facebook.com/v19.0/${pixel_id}/events?access_token=${access_token}`;
     const response = await fetch(url, {
@@ -51,19 +65,13 @@ async function sendPurchase(cfg, { name, phone, email, value }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-
     const data = await response.json();
-    console.log('=== META CAPI RESPONSE ===');
-    console.log(JSON.stringify(data, null, 2));
-
-    if (data.error) return { 
-      success: false, 
-      error: `${data.error.message} (code: ${data.error.code}, subcode: ${data.error.error_subcode || 'n/a'})`,
-      detail: data.error
+    if (data.error) return {
+      success: false,
+      error: `${data.error.message} (code: ${data.error.code}, subcode: ${data.error.error_subcode || 'n/a'})`
     };
     return { success: true, events_received: data.events_received, fbtrace_id: data.fbtrace_id };
   } catch (err) {
-    console.log('=== META CAPI ERROR ===', err.message);
     return { success: false, error: err.message };
   }
 }
