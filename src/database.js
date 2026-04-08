@@ -1,131 +1,202 @@
-const fs = require('fs');
-const path = require('path');
+const { Pool } = require('pg');
 
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
-const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
-const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
-const PIXELS_FILE = path.join(DATA_DIR, 'pixels.json');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('railway.internal') 
+    ? false 
+    : { rejectUnauthorized: false }
+});
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(CONFIG_FILE)) fs.writeFileSync(CONFIG_FILE, 'null');
-if (!fs.existsSync(EVENTS_FILE)) fs.writeFileSync(EVENTS_FILE, '[]');
-if (!fs.existsSync(PIXELS_FILE)) fs.writeFileSync(PIXELS_FILE, '[]');
+async function init() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS config (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      password TEXT,
+      auth_token TEXT,
+      webhook_token TEXT,
+      CHECK (id = 1)
+    );
 
-function readConfig() { try { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); } catch(e) { return null; } }
-function writeConfig(cfg) { fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2)); }
-function readEvents() { try { return JSON.parse(fs.readFileSync(EVENTS_FILE, 'utf8')); } catch(e) { return []; } }
-function writeEvents(events) { fs.writeFileSync(EVENTS_FILE, JSON.stringify(events, null, 2)); }
-function readPixels() { try { return JSON.parse(fs.readFileSync(PIXELS_FILE, 'utf8')); } catch(e) { return []; } }
-function writePixels(pixels) { fs.writeFileSync(PIXELS_FILE, JSON.stringify(pixels, null, 2)); }
+    CREATE TABLE IF NOT EXISTS pixels (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      pixel_id TEXT NOT NULL,
+      access_token TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
 
-function getConfig() { return readConfig(); }
-
-function saveConfig(cfg) {
-  const existing = readConfig() || {};
-  writeConfig(Object.assign({}, existing, cfg));
+    CREATE TABLE IF NOT EXISTS events (
+      id BIGSERIAL PRIMARY KEY,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      pixel_id TEXT,
+      pixel_name TEXT,
+      name TEXT,
+      phone TEXT,
+      email TEXT,
+      gender TEXT,
+      cep TEXT,
+      value NUMERIC,
+      status TEXT,
+      error_msg TEXT,
+      source TEXT DEFAULT 'manual'
+    );
+  `);
+  console.log('Banco de dados inicializado');
 }
 
-function getPixels() { return readPixels(); }
+init().catch(function(err) { console.error('Erro ao inicializar banco:', err.message); });
 
-function savePixel(data) {
-  const pixels = readPixels();
+async function getConfig() {
+  const res = await pool.query('SELECT * FROM config WHERE id = 1');
+  return res.rows[0] || null;
+}
+
+async function saveConfig(cfg) {
+  const existing = await getConfig();
+  if (!existing) {
+    await pool.query(
+      'INSERT INTO config (id, password, auth_token, webhook_token) VALUES (1, $1, $2, $3)',
+      [cfg.password || '', cfg.auth_token || '', cfg.webhook_token || '']
+    );
+  } else {
+    const fields = [];
+    const values = [];
+    let i = 1;
+    if (cfg.password !== undefined) { fields.push('password = $' + i++); values.push(cfg.password); }
+    if (cfg.auth_token !== undefined) { fields.push('auth_token = $' + i++); values.push(cfg.auth_token); }
+    if (cfg.webhook_token !== undefined) { fields.push('webhook_token = $' + i++); values.push(cfg.webhook_token); }
+    if (fields.length > 0) {
+      await pool.query('UPDATE config SET ' + fields.join(', ') + ' WHERE id = 1', values);
+    }
+  }
+}
+
+async function getPixels() {
+  const res = await pool.query('SELECT * FROM pixels ORDER BY created_at ASC');
+  return res.rows;
+}
+
+async function savePixel(data) {
   if (data.id) {
-    const idx = pixels.findIndex(function(p) { return p.id === data.id; });
-    if (idx >= 0) {
-      pixels[idx].name = data.name;
-      pixels[idx].pixel_id = data.pixel_id;
-      pixels[idx].access_token = data.access_token;
+    const exists = await pool.query('SELECT id FROM pixels WHERE id = $1', [data.id]);
+    if (exists.rows.length > 0) {
+      await pool.query(
+        'UPDATE pixels SET name=$1, pixel_id=$2, access_token=$3 WHERE id=$4',
+        [data.name, data.pixel_id, data.access_token, data.id]
+      );
     } else {
-      pixels.push({ id: data.id, name: data.name, pixel_id: data.pixel_id, access_token: data.access_token, created_at: new Date().toISOString() });
+      await pool.query(
+        'INSERT INTO pixels (id, name, pixel_id, access_token) VALUES ($1,$2,$3,$4)',
+        [data.id, data.name, data.pixel_id, data.access_token]
+      );
     }
   } else {
-    pixels.push({ id: Date.now().toString(), name: data.name, pixel_id: data.pixel_id, access_token: data.access_token, created_at: new Date().toISOString() });
+    const newId = Date.now().toString();
+    await pool.query(
+      'INSERT INTO pixels (id, name, pixel_id, access_token) VALUES ($1,$2,$3,$4)',
+      [newId, data.name, data.pixel_id, data.access_token]
+    );
   }
-  writePixels(pixels);
-  return pixels;
+  return getPixels();
 }
 
-function deletePixel(id) {
-  const pixels = readPixels().filter(function(p) { return p.id !== id; });
-  writePixels(pixels);
-  return pixels;
+async function deletePixel(id) {
+  await pool.query('DELETE FROM pixels WHERE id = $1', [id]);
+  return getPixels();
 }
 
-function getPixelById(id) {
-  return readPixels().find(function(p) { return p.id === id; }) || null;
+async function getPixelById(id) {
+  const res = await pool.query('SELECT * FROM pixels WHERE id = $1', [id]);
+  return res.rows[0] || null;
 }
 
-function insertEvent(data) {
-  const events = readEvents();
-  events.unshift({
-    id: Date.now(),
-    created_at: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
-    pixel_id: data.pixel_id || '',
-    pixel_name: data.pixel_name || '',
-    name: data.name || '',
-    phone: data.phone || '',
-    email: data.email || '',
-    gender: data.gender || '',
-    cep: data.cep || '',
-    value: parseFloat(data.value) || 0,
-    status: data.status,
-    error_msg: data.error_msg || null,
-    source: data.source || 'manual'
-  });
-  if (events.length > 5000) events.splice(5000);
-  writeEvents(events);
+async function insertEvent(data) {
+  await pool.query(
+    'INSERT INTO events (pixel_id, pixel_name, name, phone, email, gender, cep, value, status, error_msg, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+    [data.pixel_id || '', data.pixel_name || '', data.name || '', data.phone || '', data.email || '', data.gender || '', data.cep || '', parseFloat(data.value) || 0, data.status, data.error_msg || null, data.source || 'manual']
+  );
 }
 
-function getEvents(opts) {
+async function getEvents(opts) {
   const page = opts.page || 1;
   const status = opts.status;
   const pixel_id = opts.pixel_id;
   const limit = 50;
-  let events = readEvents();
-  if (status && status !== 'all') events = events.filter(function(e) { return e.status === status; });
-  if (pixel_id && pixel_id !== 'all') events = events.filter(function(e) { return e.pixel_id === pixel_id; });
-  return { total: events.length, page: page, rows: events.slice((page - 1) * limit, page * limit) };
+  const offset = (page - 1) * limit;
+
+  let where = 'WHERE 1=1';
+  const values = [];
+  let i = 1;
+  if (status && status !== 'all') { where += ' AND status = $' + i++; values.push(status); }
+  if (pixel_id && pixel_id !== 'all') { where += ' AND pixel_id = $' + i++; values.push(pixel_id); }
+
+  const countRes = await pool.query('SELECT COUNT(*) as total FROM events ' + where, values);
+  const total = parseInt(countRes.rows[0].total);
+
+  values.push(limit); values.push(offset);
+  const rows = await pool.query(
+    'SELECT *, to_char(created_at AT TIME ZONE \'America/Sao_Paulo\', \'DD/MM/YYYY, HH24:MI:SS\') as created_at_br FROM events ' + where + ' ORDER BY id DESC LIMIT $' + i++ + ' OFFSET $' + i++,
+    values
+  );
+
+  return {
+    total: total,
+    page: page,
+    rows: rows.rows.map(function(r) {
+      return {
+        id: r.id,
+        created_at: r.created_at_br,
+        pixel_id: r.pixel_id,
+        pixel_name: r.pixel_name,
+        name: r.name,
+        phone: r.phone,
+        email: r.email,
+        gender: r.gender,
+        cep: r.cep,
+        value: r.value,
+        status: r.status,
+        error_msg: r.error_msg,
+        source: r.source
+      };
+    })
+  };
 }
 
-function parseDate(str) {
-  try {
-    const parts = str.split(',')[0].trim().split('/');
-    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-  } catch(e) { return null; }
-}
+async function getStats(pixel_id) {
+  let where = '';
+  const values = [];
+  if (pixel_id && pixel_id !== 'all') { where = 'WHERE pixel_id = $1'; values.push(pixel_id); }
 
-function sameDay(d1, d2) {
-  return d1 && d2 && d1.getDate() === d2.getDate() && d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
-}
+  const todayWhere = where ? where + ' AND DATE(created_at AT TIME ZONE \'America/Sao_Paulo\') = CURRENT_DATE' : 'WHERE DATE(created_at AT TIME ZONE \'America/Sao_Paulo\') = CURRENT_DATE';
+  const last30Where = where ? where + ' AND created_at >= NOW() - INTERVAL \'30 days\'' : 'WHERE created_at >= NOW() - INTERVAL \'30 days\'';
 
-function getStats(pixel_id) {
-  let events = readEvents();
-  if (pixel_id && pixel_id !== 'all') events = events.filter(function(e) { return e.pixel_id === pixel_id; });
-  const today = new Date();
-  const todayAll = events.filter(function(e) { return sameDay(parseDate(e.created_at), today); });
-  const last30All = events.filter(function(e) {
-    const d = parseDate(e.created_at);
-    return d && (Date.now() - d.getTime()) <= 30 * 24 * 60 * 60 * 1000;
-  });
-  const sent30 = last30All.filter(function(e) { return e.status === 'sent'; }).length;
+  const todayRes = await pool.query('SELECT COUNT(*) as total, COALESCE(SUM(CASE WHEN status=\'sent\' THEN value ELSE 0 END),0) as value, COUNT(CASE WHEN status=\'error\' THEN 1 END) as errors FROM events ' + todayWhere, values);
+  const last30Res = await pool.query('SELECT COUNT(*) as total, COUNT(CASE WHEN status=\'sent\' THEN 1 END) as sent FROM events ' + last30Where, values);
+
+  const today = todayRes.rows[0];
+  const last30 = last30Res.rows[0];
+  const matchRate = parseInt(last30.total) > 0 ? ((parseInt(last30.sent) / parseInt(last30.total)) * 100).toFixed(1) : '0.0';
+
   const chart = [];
   for (let i = 6; i >= 0; i--) {
+    const dayWhere = where ? where + ' AND DATE(created_at AT TIME ZONE \'America/Sao_Paulo\') = CURRENT_DATE - INTERVAL \'' + i + ' days\'' : 'WHERE DATE(created_at AT TIME ZONE \'America/Sao_Paulo\') = CURRENT_DATE - INTERVAL \'' + i + ' days\'';
+    const dayRes = await pool.query('SELECT COUNT(CASE WHEN status=\'sent\' THEN 1 END) as sent, COUNT(CASE WHEN status=\'error\' THEN 1 END) as errors FROM events ' + dayWhere, values);
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dayEvents = events.filter(function(e) { return sameDay(parseDate(e.created_at), d); });
     chart.push({
-      day: ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth()+1)).slice(-2),
-      sent: dayEvents.filter(function(e) { return e.status === 'sent'; }).length,
-      errors: dayEvents.filter(function(e) { return e.status === 'error'; }).length
+      day: ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2),
+      sent: parseInt(dayRes.rows[0].sent),
+      errors: parseInt(dayRes.rows[0].errors)
     });
   }
+
   return {
-    eventsToday: todayAll.length,
-    valueToday: todayAll.filter(function(e) { return e.status === 'sent'; }).reduce(function(s, e) { return s + (e.value || 0); }, 0),
-    errorsToday: todayAll.filter(function(e) { return e.status === 'error'; }).length,
-    matchRate: last30All.length > 0 ? ((sent30 / last30All.length) * 100).toFixed(1) : '0.0',
-    sent30: sent30,
-    last30: last30All.length,
+    eventsToday: parseInt(today.total),
+    valueToday: parseFloat(today.value),
+    errorsToday: parseInt(today.errors),
+    matchRate: matchRate,
+    sent30: parseInt(last30.sent),
+    last30: parseInt(last30.total),
     chart: chart
   };
 }
