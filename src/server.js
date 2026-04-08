@@ -14,9 +14,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-function auth(req, res, next) {
+async function auth(req, res, next) {
   const token = req.headers['x-auth-token'];
-  const cfg = db.getConfig();
+  const cfg = await db.getConfig();
   if (!cfg || !cfg.auth_token) return res.status(401).json({ error: 'Nao autenticado' });
   if (token !== cfg.auth_token) return res.status(401).json({ error: 'Token invalido' });
   next();
@@ -37,48 +37,51 @@ app.post('/api/login', function(req, res) {
 });
 
 // RESET DE EMERGENCIA - deleta config e permite novo cadastro
-app.post('/api/reset', function(req, res) {
+app.post('/api/reset', async function(req, res) {
   const secret = req.body.secret;
   if (secret !== 'infinity2026reset') return res.status(403).json({ error: 'Nao autorizado' });
   const fs = require('fs');
-  const configPath = require('path').join(__dirname, '../data/config.json');
-  if (fs.existsSync(configPath)) fs.writeFileSync(configPath, 'null');
+  await db.getConfig(); // just ping
+  const { Pool } = require('pg');
+  const pool2 = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+  await pool2.query("DELETE FROM config WHERE id = 1");
+  await pool2.end();
   res.json({ ok: true, msg: 'Config resetada. Acesse a plataforma e cadastre nova senha.' });
 });
 
-app.post('/api/change-password', auth, function(req, res) {
+app.post('/api/change-password', auth, async function(req, res) {
   const new_password = req.body.new_password;
   if (!new_password || new_password.length < 4) return res.status(400).json({ error: 'Senha muito curta' });
-  db.saveConfig({ password: new_password });
+  await db.saveConfig({ password: new_password });
   res.json({ ok: true });
 });
 
 // PIXELS
-app.get('/api/pixels', auth, function(req, res) {
-  const pixels = db.getPixels().map(function(p) {
+app.get('/api/pixels', auth, async function(req, res) {
+  const pixels = await db.getPixels().map(function(p) {
     return { id: p.id, name: p.name, pixel_id: p.pixel_id, created_at: p.created_at };
   });
   res.json(pixels);
 });
 
-app.post('/api/pixels', auth, function(req, res) {
+app.post('/api/pixels', auth, async function(req, res) {
   const id = req.body.id;
   const name = req.body.name;
   const pixel_id = req.body.pixel_id;
   const access_token = req.body.access_token;
   if (!name || !pixel_id || !access_token) return res.status(400).json({ error: 'Nome, Pixel ID e Access Token sao obrigatorios' });
-  const pixels = db.savePixel({ id: id, name: name, pixel_id: pixel_id, access_token: access_token });
+  const pixels = await db.savePixel({ id: id, name: name, pixel_id: pixel_id, access_token: access_token });
   res.json({ ok: true, pixels: pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id }; }) });
 });
 
-app.delete('/api/pixels/:id', auth, function(req, res) {
-  db.deletePixel(req.params.id);
+app.delete('/api/pixels/:id', auth, async function(req, res) {
+  await db.deletePixel(req.params.id);
   res.json({ ok: true });
 });
 
 // WEBHOOK URL
-app.get('/api/webhook-url', auth, function(req, res) {
-  const cfg = db.getConfig();
+app.get('/api/webhook-url', auth, async function(req, res) {
+  const cfg = await db.getConfig();
   const base = process.env.BASE_URL || ('http://localhost:' + PORT);
   res.json({ url: base + '/webhook/' + cfg.webhook_token });
 });
@@ -203,13 +206,13 @@ app.post('/api/send-bulk', auth, upload.single('file'), async function(req, res)
 });
 
 // EVENTOS
-app.get('/api/events', auth, function(req, res) {
-  res.json(db.getEvents({ page: parseInt(req.query.page || 1), status: req.query.status, pixel_id: req.query.pixel_id }));
+app.get('/api/events', auth, async function(req, res) {
+  res.json(await db.getEvents({ page: parseInt(req.query.page || 1), status: req.query.status, pixel_id: req.query.pixel_id }));
 });
 
 // STATS
-app.get('/api/stats', auth, function(req, res) {
-  res.json(db.getStats(req.query.pixel_id));
+app.get('/api/stats', auth, async function(req, res) {
+  res.json(await db.getStats(req.query.pixel_id));
 });
 
 // SPA fallback
