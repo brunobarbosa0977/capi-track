@@ -22,87 +22,124 @@ function auth(req, res, next) {
   next();
 }
 
-app.post('/api/login', (req, res) => {
-  const { password } = req.body;
+// LOGIN - primeiro acesso cadastra qualquer senha
+app.post('/api/login', function(req, res) {
+  const password = req.body.password;
   const cfg = db.getConfig();
   if (!cfg) {
     const token = uuidv4();
-    db.saveConfig({ password, auth_token: token, webhook_token: uuidv4().replace(/-/g,'') });
-    return res.json({ token });
+    const webhook = uuidv4().replace(/-/g, '');
+    db.saveConfig({ password: password, auth_token: token, webhook_token: webhook });
+    return res.json({ token: token });
   }
   if (password !== cfg.password) return res.status(401).json({ error: 'Senha incorreta' });
   res.json({ token: cfg.auth_token });
 });
 
-app.post('/api/change-password', auth, (req, res) => {
-  const { new_password } = req.body;
+// RESET DE EMERGENCIA - deleta config e permite novo cadastro
+app.post('/api/reset', function(req, res) {
+  const secret = req.body.secret;
+  if (secret !== 'infinity2026reset') return res.status(403).json({ error: 'Nao autorizado' });
+  const fs = require('fs');
+  const configPath = require('path').join(__dirname, '../data/config.json');
+  if (fs.existsSync(configPath)) fs.writeFileSync(configPath, 'null');
+  res.json({ ok: true, msg: 'Config resetada. Acesse a plataforma e cadastre nova senha.' });
+});
+
+app.post('/api/change-password', auth, function(req, res) {
+  const new_password = req.body.new_password;
   if (!new_password || new_password.length < 4) return res.status(400).json({ error: 'Senha muito curta' });
   db.saveConfig({ password: new_password });
   res.json({ ok: true });
 });
 
-app.get('/api/pixels', auth, (req, res) => {
-  const pixels = db.getPixels().map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id, created_at: p.created_at }; });
+// PIXELS
+app.get('/api/pixels', auth, function(req, res) {
+  const pixels = db.getPixels().map(function(p) {
+    return { id: p.id, name: p.name, pixel_id: p.pixel_id, created_at: p.created_at };
+  });
   res.json(pixels);
 });
 
-app.post('/api/pixels', auth, (req, res) => {
-  const { id, name, pixel_id, access_token } = req.body;
+app.post('/api/pixels', auth, function(req, res) {
+  const id = req.body.id;
+  const name = req.body.name;
+  const pixel_id = req.body.pixel_id;
+  const access_token = req.body.access_token;
   if (!name || !pixel_id || !access_token) return res.status(400).json({ error: 'Nome, Pixel ID e Access Token sao obrigatorios' });
-  const pixels = db.savePixel({ id, name, pixel_id, access_token });
+  const pixels = db.savePixel({ id: id, name: name, pixel_id: pixel_id, access_token: access_token });
   res.json({ ok: true, pixels: pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id }; }) });
 });
 
-app.delete('/api/pixels/:id', auth, (req, res) => {
+app.delete('/api/pixels/:id', auth, function(req, res) {
   db.deletePixel(req.params.id);
   res.json({ ok: true });
 });
 
-app.get('/api/webhook-url', auth, (req, res) => {
+// WEBHOOK URL
+app.get('/api/webhook-url', auth, function(req, res) {
   const cfg = db.getConfig();
   const base = process.env.BASE_URL || ('http://localhost:' + PORT);
   res.json({ url: base + '/webhook/' + cfg.webhook_token });
 });
 
-app.post('/webhook/:token', async (req, res) => {
+// WEBHOOK RECEIVER
+app.post('/webhook/:token', async function(req, res) {
   const cfg = db.getConfig();
   if (!cfg || req.params.token !== cfg.webhook_token) return res.status(403).json({ error: 'Webhook invalido' });
-  const { name, phone, email, value, gender, cep, pixel_id } = req.body;
+  const name = req.body.name;
+  const phone = req.body.phone;
+  const email = req.body.email;
+  const value = req.body.value;
+  const gender = req.body.gender;
+  const cep = req.body.cep;
+  const pixel_id = req.body.pixel_id;
   if (!phone || !value) return res.status(400).json({ error: 'phone e value sao obrigatorios' });
   let pixelCfg = pixel_id ? db.getPixelById(pixel_id) : db.getPixels()[0];
   if (!pixelCfg) return res.status(400).json({ error: 'Nenhum pixel configurado' });
-  const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
-  db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
+  const result = await metaApi.sendPurchase(pixelCfg, { name: name, phone: phone, email: email, value: value, gender: gender, cep: cep });
+  db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name: name, phone: phone, email: email, value: value, gender: gender, cep: cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
   res.json(result);
 });
 
-app.post('/api/send', auth, async (req, res) => {
-  const { name, phone, email, value, gender, cep, pixel_id } = req.body;
+// ENVIO MANUAL
+app.post('/api/send', auth, async function(req, res) {
+  const name = req.body.name;
+  const phone = req.body.phone;
+  const email = req.body.email;
+  const value = req.body.value;
+  const gender = req.body.gender;
+  const cep = req.body.cep;
+  const pixel_id = req.body.pixel_id;
   if (!phone || !value) return res.status(400).json({ error: 'Telefone e valor sao obrigatorios' });
   if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
   const pixelCfg = db.getPixelById(pixel_id);
   if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
-  const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
-  db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
+  const result = await metaApi.sendPurchase(pixelCfg, { name: name, phone: phone, email: email, value: value, gender: gender, cep: cep });
+  db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name: name, phone: phone, email: email, value: value, gender: gender, cep: cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
   res.json(result);
 });
 
-app.post('/api/preview-bulk', auth, upload.single('file'), (req, res) => {
+// PREVIEW BULK
+app.post('/api/preview-bulk', auth, upload.single('file'), function(req, res) {
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
   const ext = req.file.originalname.split('.').pop().toLowerCase();
   let rows = [];
   try {
     if (ext === 'csv') {
-      const { parse } = require('csv-parse/sync');
-      rows = parse(req.file.buffer.toString('utf8'), { columns: true, skip_empty_lines: true, trim: true });
+      const csvParse = require('csv-parse/sync');
+      rows = csvParse.parse(req.file.buffer.toString('utf8'), { columns: true, skip_empty_lines: true, trim: true });
     } else if (ext === 'xlsx' || ext === 'xls') {
       const XLSX = require('xlsx');
       const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
       rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    } else { return res.status(400).json({ error: 'Formato invalido. Use CSV ou XLSX.' }); }
-  } catch (e) { return res.status(400).json({ error: 'Erro ao ler arquivo: ' + e.message }); }
+    } else {
+      return res.status(400).json({ error: 'Formato invalido. Use CSV ou XLSX.' });
+    }
+  } catch(e) { return res.status(400).json({ error: 'Erro ao ler arquivo: ' + e.message }); }
   const normalize = function(row) {
-    const k = Object.keys(row).reduce(function(acc, key) { acc[key.toLowerCase().trim()] = row[key]; return acc; }, {});
+    const k = {};
+    Object.keys(row).forEach(function(key) { k[key.toLowerCase().trim()] = row[key]; });
     return {
       name: k.nome || k.name || '',
       phone: k.telefone || k.phone || k.fone || '',
@@ -115,7 +152,8 @@ app.post('/api/preview-bulk', auth, upload.single('file'), (req, res) => {
   res.json({ rows: rows.map(normalize), total: rows.length });
 });
 
-app.post('/api/send-bulk', auth, upload.single('file'), async (req, res) => {
+// DISPARO EM MASSA
+app.post('/api/send-bulk', auth, upload.single('file'), async function(req, res) {
   const pixel_id = req.body.pixel_id;
   if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
   const pixelCfg = db.getPixelById(pixel_id);
@@ -125,16 +163,19 @@ app.post('/api/send-bulk', auth, upload.single('file'), async (req, res) => {
   let rows = [];
   try {
     if (ext === 'csv') {
-      const { parse } = require('csv-parse/sync');
-      rows = parse(req.file.buffer.toString('utf8'), { columns: true, skip_empty_lines: true, trim: true });
+      const csvParse = require('csv-parse/sync');
+      rows = csvParse.parse(req.file.buffer.toString('utf8'), { columns: true, skip_empty_lines: true, trim: true });
     } else if (ext === 'xlsx' || ext === 'xls') {
       const XLSX = require('xlsx');
       const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
       rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    } else { return res.status(400).json({ error: 'Formato invalido.' }); }
-  } catch (e) { return res.status(400).json({ error: 'Erro ao ler: ' + e.message }); }
+    } else {
+      return res.status(400).json({ error: 'Formato invalido.' });
+    }
+  } catch(e) { return res.status(400).json({ error: 'Erro ao ler: ' + e.message }); }
   const normalize = function(row) {
-    const k = Object.keys(row).reduce(function(acc, key) { acc[key.toLowerCase().trim()] = row[key]; return acc; }, {});
+    const k = {};
+    Object.keys(row).forEach(function(key) { k[key.toLowerCase().trim()] = row[key]; });
     return {
       name: k.nome || k.name || '',
       phone: k.telefone || k.phone || k.fone || '',
@@ -145,23 +186,37 @@ app.post('/api/send-bulk', auth, upload.single('file'), async (req, res) => {
     };
   };
   const results = [];
-  for (const raw of rows) {
-    const lead = normalize(raw);
-    if (!lead.phone || !lead.value) { results.push(Object.assign({}, lead, { success: false, error: 'Telefone ou valor ausente' })); continue; }
+  for (let i = 0; i < rows.length; i++) {
+    const lead = normalize(rows[i]);
+    if (!lead.phone || !lead.value) {
+      results.push({ success: false, error: 'Telefone ou valor ausente', name: lead.name, phone: lead.phone });
+      continue;
+    }
     const result = await metaApi.sendPurchase(pixelCfg, lead);
-    db.insertEvent(Object.assign({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name }, lead, { status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'bulk' }));
-    results.push(Object.assign({}, lead, result));
-    await new Promise(function(r) { setTimeout(r, 200); });
+    db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name: lead.name, phone: lead.phone, email: lead.email, value: lead.value, gender: lead.gender, cep: lead.cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'bulk' });
+    results.push({ success: result.success, name: lead.name, phone: lead.phone });
+    await new Promise(function(resolve) { setTimeout(resolve, 200); });
   }
-  res.json({ total: results.length, sent: results.filter(function(r) { return r.success; }).length, errors: results.filter(function(r) { return !r.success; }).length });
+  const sent = results.filter(function(r) { return r.success; }).length;
+  const errors = results.filter(function(r) { return !r.success; }).length;
+  res.json({ total: results.length, sent: sent, errors: errors });
 });
 
-app.get('/api/events', auth, (req, res) => {
+// EVENTOS
+app.get('/api/events', auth, function(req, res) {
   res.json(db.getEvents({ page: parseInt(req.query.page || 1), status: req.query.status, pixel_id: req.query.pixel_id }));
 });
 
-app.get('/api/stats', auth, (req, res) => res.json(db.getStats(req.query.pixel_id)));
+// STATS
+app.get('/api/stats', auth, function(req, res) {
+  res.json(db.getStats(req.query.pixel_id));
+});
 
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+// SPA fallback
+app.get('*', function(req, res) {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
 
-app.listen(PORT, function() { console.log('Servidor rodando na porta ' + PORT); });
+app.listen(PORT, function() {
+  console.log('Servidor rodando na porta ' + PORT);
+});
