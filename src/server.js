@@ -42,7 +42,7 @@ app.post('/api/change-password', auth, (req, res) => {
 });
 
 app.get('/api/pixels', auth, (req, res) => {
-  const pixels = db.getPixels().map(p => ({ id: p.id, name: p.name, pixel_id: p.pixel_id, created_at: p.created_at }));
+  const pixels = db.getPixels().map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id, created_at: p.created_at }; });
   res.json(pixels);
 });
 
@@ -50,7 +50,7 @@ app.post('/api/pixels', auth, (req, res) => {
   const { id, name, pixel_id, access_token } = req.body;
   if (!name || !pixel_id || !access_token) return res.status(400).json({ error: 'Nome, Pixel ID e Access Token sao obrigatorios' });
   const pixels = db.savePixel({ id, name, pixel_id, access_token });
-  res.json({ ok: true, pixels: pixels.map(p => ({ id: p.id, name: p.name, pixel_id: p.pixel_id })) });
+  res.json({ ok: true, pixels: pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id }; }) });
 });
 
 app.delete('/api/pixels/:id', auth, (req, res) => {
@@ -60,8 +60,8 @@ app.delete('/api/pixels/:id', auth, (req, res) => {
 
 app.get('/api/webhook-url', auth, (req, res) => {
   const cfg = db.getConfig();
-  const base = process.env.BASE_URL || `http://localhost:${PORT}`;
-  res.json({ url: `${base}/webhook/${cfg.webhook_token}` });
+  const base = process.env.BASE_URL || ('http://localhost:' + PORT);
+  res.json({ url: base + '/webhook/' + cfg.webhook_token });
 });
 
 app.post('/webhook/:token', async (req, res) => {
@@ -101,8 +101,8 @@ app.post('/api/preview-bulk', auth, upload.single('file'), (req, res) => {
       rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
     } else { return res.status(400).json({ error: 'Formato invalido. Use CSV ou XLSX.' }); }
   } catch (e) { return res.status(400).json({ error: 'Erro ao ler arquivo: ' + e.message }); }
-  const normalize = (row) => {
-    const k = Object.keys(row).reduce((acc, key) => { acc[key.toLowerCase().trim()] = row[key]; return acc; }, {});
+  const normalize = function(row) {
+    const k = Object.keys(row).reduce(function(acc, key) { acc[key.toLowerCase().trim()] = row[key]; return acc; }, {});
     return {
       name: k.nome || k.name || '',
       phone: k.telefone || k.phone || k.fone || '',
@@ -133,8 +133,8 @@ app.post('/api/send-bulk', auth, upload.single('file'), async (req, res) => {
       rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
     } else { return res.status(400).json({ error: 'Formato invalido.' }); }
   } catch (e) { return res.status(400).json({ error: 'Erro ao ler: ' + e.message }); }
-  const normalize = (row) => {
-    const k = Object.keys(row).reduce((acc, key) => { acc[key.toLowerCase().trim()] = row[key]; return acc; }, {});
+  const normalize = function(row) {
+    const k = Object.keys(row).reduce(function(acc, key) { acc[key.toLowerCase().trim()] = row[key]; return acc; }, {});
     return {
       name: k.nome || k.name || '',
       phone: k.telefone || k.phone || k.fone || '',
@@ -147,13 +147,13 @@ app.post('/api/send-bulk', auth, upload.single('file'), async (req, res) => {
   const results = [];
   for (const raw of rows) {
     const lead = normalize(raw);
-    if (!lead.phone || !lead.value) { results.push({ ...lead, success: false, error: 'Telefone ou valor ausente' }); continue; }
+    if (!lead.phone || !lead.value) { results.push(Object.assign({}, lead, { success: false, error: 'Telefone ou valor ausente' })); continue; }
     const result = await metaApi.sendPurchase(pixelCfg, lead);
-    db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, ...lead, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'bulk' });
-    results.push({ ...lead, ...result });
-    await new Promise(r => setTimeout(r, 200));
+    db.insertEvent(Object.assign({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name }, lead, { status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'bulk' }));
+    results.push(Object.assign({}, lead, result));
+    await new Promise(function(r) { setTimeout(r, 200); });
   }
-  res.json({ total: results.length, sent: results.filter(r => r.success).length, errors: results.filter(r => !r.success).length });
+  res.json({ total: results.length, sent: results.filter(function(r) { return r.success; }).length, errors: results.filter(function(r) { return !r.success; }).length });
 });
 
 app.get('/api/events', auth, (req, res) => {
@@ -164,4 +164,4 @@ app.get('/api/stats', auth, (req, res) => res.json(db.getStats(req.query.pixel_i
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
 
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, function() { console.log('Servidor rodando na porta ' + PORT); });
