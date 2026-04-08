@@ -22,7 +22,7 @@ async function sendPurchase(cfg, { name, phone, email, value }) {
     userData.fn = [hash(parts[0])];
     if (parts.length > 1) userData.ln = [hash(parts.slice(1).join(' '))];
   }
-  userData.country = ['br'];
+  userData.country = [hash('br')];
 
   const eventId = crypto.randomBytes(16).toString('hex');
 
