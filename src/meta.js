@@ -12,10 +12,6 @@ function normalizePhone(phone) {
   return p;
 }
 
-function generateEventId() {
-  return crypto.randomBytes(16).toString('hex');
-}
-
 async function sendPurchase(cfg, { name, phone, email, value }) {
   const { pixel_id, access_token } = cfg;
   const userData = {};
@@ -28,11 +24,13 @@ async function sendPurchase(cfg, { name, phone, email, value }) {
   }
   userData.country = ['br'];
 
+  const eventId = crypto.randomBytes(16).toString('hex');
+
   const payload = {
     data: [{
       event_name: 'Purchase',
       event_time: Math.floor(Date.now() / 1000),
-      event_id: generateEventId(),
+      event_id: eventId,
       action_source: 'website',
       user_data: userData,
       custom_data: {
@@ -42,6 +40,10 @@ async function sendPurchase(cfg, { name, phone, email, value }) {
     }]
   };
 
+  console.log('=== META CAPI REQUEST ===');
+  console.log('Pixel ID:', pixel_id);
+  console.log('Payload:', JSON.stringify(payload, null, 2));
+
   try {
     const url = `https://graph.facebook.com/v19.0/${pixel_id}/events?access_token=${access_token}`;
     const response = await fetch(url, {
@@ -49,10 +51,19 @@ async function sendPurchase(cfg, { name, phone, email, value }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+
     const data = await response.json();
-    if (data.error) return { success: false, error: `${data.error.message} (code: ${data.error.code}, subcode: ${data.error.error_subcode || 'n/a'})` };
+    console.log('=== META CAPI RESPONSE ===');
+    console.log(JSON.stringify(data, null, 2));
+
+    if (data.error) return { 
+      success: false, 
+      error: `${data.error.message} (code: ${data.error.code}, subcode: ${data.error.error_subcode || 'n/a'})`,
+      detail: data.error
+    };
     return { success: true, events_received: data.events_received, fbtrace_id: data.fbtrace_id };
   } catch (err) {
+    console.log('=== META CAPI ERROR ===', err.message);
     return { success: false, error: err.message };
   }
 }
