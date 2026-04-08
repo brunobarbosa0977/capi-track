@@ -28,7 +28,7 @@ app.post('/api/login', (req, res) => {
   const cfg = db.getConfig();
   if (!cfg) {
     const token = uuidv4();
-    db.saveConfig({ password, auth_token: token, webhook_token: uuidv4().replace(/-/g,''), pixel_id: '', access_token: '', pixel_name: '' });
+    db.saveConfig({ password, auth_token: token, webhook_token: uuidv4().replace(/-/g,'') });
     return res.json({ token });
   }
   if (password !== cfg.password) return res.status(401).json({ error: 'Senha incorreta' });
@@ -42,40 +42,63 @@ app.post('/api/change-password', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// CONFIG
-app.get('/api/config', auth, (req, res) => {
-  const cfg = db.getConfig();
-  if (!cfg) return res.json({});
-  const { password, auth_token, ...safe } = cfg;
-  res.json(safe);
+// PIXELS
+app.get('/api/pixels', auth, (req, res) => {
+  const pixels = db.getPixels().map(p => ({ id: p.id, name: p.name, pixel_id: p.pixel_id, created_at: p.created_at }));
+  res.json(pixels);
 });
 
-app.post('/api/config', auth, (req, res) => {
-  const { pixel_id, access_token, pixel_name } = req.body;
-  if (!pixel_id || !access_token) return res.status(400).json({ error: 'Pixel ID e Access Token sao obrigatorios' });
-  db.saveConfig({ pixel_id, access_token, pixel_name: pixel_name || '' });
+app.post('/api/pixels', auth, (req, res) => {
+  const { id, name, pixel_id, access_token } = req.body;
+  if (!name || !pixel_id || !access_token) return res.status(400).json({ error: 'Nome, Pixel ID e Access Token sao obrigatorios' });
+  const pixels = db.savePixel({ id, name, pixel_id, access_token });
+  res.json({ ok: true, pixels: pixels.map(p => ({ id: p.id, name: p.name, pixel_id: p.pixel_id })) });
+});
+
+app.delete('/api/pixels/:id', auth, (req, res) => {
+  db.deletePixel(req.params.id);
   res.json({ ok: true });
 });
 
-// WEBHOOK
+// WEBHOOK URL
+app.get('/api/webhook-url', auth, (req, res) => {
+  const cfg = db.getConfig();
+  const base = process.env.BASE_URL || `http://localhost:${PORT}`;
+  res.json({ url: `${base}/webhook/${cfg.webhook_token}` });
+});
+
+// WEBHOOK (recebe por pixel_id no body)
 app.post('/webhook/:token', async (req, res) => {
   const cfg = db.getConfig();
   if (!cfg || req.params.token !== cfg.webhook_token) return res.status(403).json({ error: 'Webhook invalido' });
-  const { name, phone, email, value } = req.body;
+  const { name, phone, email, value, pixel_id } = req.body;
   if (!phone || !value) return res.status(400).json({ error: 'phone e value sao obrigatorios' });
-  const result = await metaApi.sendPurchase(cfg, { name, phone, email, value });
-  db.insertEvent({ name, phone, email, value, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
+
+  let pixelCfg;
+  if (pixel_id) {
+    pixelCfg = db.getPixelById(pixel_id);
+  } else {
+    const pixels = db.getPixels();
+    pixelCfg = pixels[0];
+  }
+  if (!pixelCfg) return res.status(400).json({ error: 'Nenhum pixel configurado' });
+
+  const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value });
+  db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
   res.json(result);
 });
 
 // SEND MANUAL
 app.post('/api/send', auth, async (req, res) => {
-  const cfg = db.getConfig();
-  if (!cfg || !cfg.pixel_id || !cfg.access_token) return res.status(400).json({ error: 'Configure o Pixel ID e Access Token primeiro' });
-  const { name, phone, email, value } = req.body;
+  const { name, phone, email, value, pixel_id } = req.body;
   if (!phone || !value) return res.status(400).json({ error: 'Telefone e valor sao obrigatorios' });
-  const result = await metaApi.sendPurchase(cfg, { name, phone, email, value });
-  db.insertEvent({ name, phone, email, value, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
+  if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
+
+  const pixelCfg = db.getPixelById(pixel_id);
+  if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
+
+  const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value });
+  db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
   res.json(result);
 });
 
@@ -92,11 +115,8 @@ app.post('/api/preview-bulk', auth, upload.single('file'), (req, res) => {
       const XLSX = require('xlsx');
       const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
       rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    } else {
-      return res.status(400).json({ error: 'Formato invalido. Use CSV ou XLSX.' });
-    }
+    } else { return res.status(400).json({ error: 'Formato invalido. Use CSV ou XLSX.' }); }
   } catch (e) { return res.status(400).json({ error: 'Erro ao ler arquivo: ' + e.message }); }
-
   const normalize = (row) => {
     const k = Object.keys(row).reduce((acc, key) => { acc[key.toLowerCase().trim()] = row[key]; return acc; }, {});
     return { name: k.nome || k.name || '', phone: k.telefone || k.phone || k.fone || '', email: k.email || '', value: parseFloat(k.valor || k.value || 0) || 0 };
@@ -106,9 +126,12 @@ app.post('/api/preview-bulk', auth, upload.single('file'), (req, res) => {
 
 // SEND BULK
 app.post('/api/send-bulk', auth, upload.single('file'), async (req, res) => {
-  const cfg = db.getConfig();
-  if (!cfg || !cfg.pixel_id || !cfg.access_token) return res.status(400).json({ error: 'Configure o Pixel ID e Access Token primeiro' });
+  const pixel_id = req.body.pixel_id;
+  if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
+  const pixelCfg = db.getPixelById(pixel_id);
+  if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+
   const ext = req.file.originalname.split('.').pop().toLowerCase();
   let rows = [];
   try {
@@ -131,28 +154,21 @@ app.post('/api/send-bulk', auth, upload.single('file'), async (req, res) => {
   for (const raw of rows) {
     const lead = normalize(raw);
     if (!lead.phone || !lead.value) { results.push({ ...lead, success: false, error: 'Telefone ou valor ausente' }); continue; }
-    const result = await metaApi.sendPurchase(cfg, lead);
-    db.insertEvent({ ...lead, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'bulk' });
+    const result = await metaApi.sendPurchase(pixelCfg, lead);
+    db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, ...lead, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'bulk' });
     results.push({ ...lead, ...result });
     await new Promise(r => setTimeout(r, 200));
   }
-  res.json({ total: results.length, sent: results.filter(r => r.success).length, errors: results.filter(r => !r.success).length, results });
+  res.json({ total: results.length, sent: results.filter(r => r.success).length, errors: results.filter(r => !r.success).length });
 });
 
 // EVENTS
 app.get('/api/events', auth, (req, res) => {
-  res.json(db.getEvents({ page: parseInt(req.query.page || 1), status: req.query.status }));
+  res.json(db.getEvents({ page: parseInt(req.query.page || 1), status: req.query.status, pixel_id: req.query.pixel_id }));
 });
 
 // STATS
-app.get('/api/stats', auth, (req, res) => res.json(db.getStats()));
-
-// WEBHOOK URL
-app.get('/api/webhook-url', auth, (req, res) => {
-  const cfg = db.getConfig();
-  const base = process.env.BASE_URL || `http://localhost:${PORT}`;
-  res.json({ url: `${base}/webhook/${cfg.webhook_token}` });
-});
+app.get('/api/stats', auth, (req, res) => res.json(db.getStats(req.query.pixel_id)));
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
 
