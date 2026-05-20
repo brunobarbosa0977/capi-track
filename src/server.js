@@ -432,6 +432,17 @@ app.get('/api/kwai/stats', auth, async function(req, res) {
 initKwaiDB().catch(console.error);
 
 // ═════════════════════════════════════════════════════════════════════════════
+// ROTAS DE PÁGINAS ESPECÍFICAS
+// ═════════════════════════════════════════════════════════════════════════════
+app.get('/kwai', function(req, res) {
+  res.sendFile(path.join(__dirname, '../public/kwai.html'));
+});
+
+app.get('/kwai.html', function(req, res) {
+  res.sendFile(path.join(__dirname, '../public/kwai.html'));
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
 // CATCH-ALL — deve ficar SEMPRE no final
 // ═════════════════════════════════════════════════════════════════════════════
 app.get('*', function(req, res) {
