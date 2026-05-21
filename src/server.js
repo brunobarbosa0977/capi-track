@@ -209,13 +209,13 @@ function kwaiPool() {
 
 async function initKwaiDB() {
   const pool = kwaiPool();
+  // Cria tabelas se não existem
   await pool.query(`
     CREATE TABLE IF NOT EXISTS kwai_leads (
       id             SERIAL PRIMARY KEY,
       phone          VARCHAR(30),
       click_id       VARCHAR(255),
       campaign_id    VARCHAR(100),
-      wpp_number     VARCHAR(30),
       status         VARCHAR(20)   DEFAULT 'lead',
       created_at     TIMESTAMP     DEFAULT NOW(),
       purchased_at   TIMESTAMP,
@@ -233,6 +233,13 @@ async function initKwaiDB() {
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
+  // Migrations — adiciona colunas novas sem quebrar tabelas existentes
+  const migrations = [
+    "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS wpp_number VARCHAR(30)",
+  ];
+  for (var i = 0; i < migrations.length; i++) {
+    try { await pool.query(migrations[i]); } catch(e) { /* ignora se já existe */ }
+  }
   await pool.end();
   console.log('[Kwai] Tabelas prontas');
 }
