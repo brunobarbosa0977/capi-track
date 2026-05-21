@@ -199,6 +199,7 @@ app.get('/api/stats', auth, async function(req, res) {
 // =============================================================================
 
 const KWAI_PIXELS    = ['304883249383318', '308803017463304'];
+const KWAI_EVENT_IDS = { '304883249383318': '689521911', '308803017463304': '687782634' };
 const KWAI_WPP_TEXT  = 'Olá! Gostaria de saber mais sobre o tratamento.';
 const DEFAULT_VALUE  = 497;
 const MAX_NUMBERS    = 20;
@@ -268,24 +269,27 @@ async function initKwaiDB() {
 }
 
 async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
-  const eventId  = uuidv4();
+  const eventId      = uuidv4();
+  const kwaiEventId  = KWAI_EVENT_IDS[pixelId] || null;
   const userData = {};
   if (clickId)              userData.click_id = clickId;
   if (extra && extra.phone) userData.ph = extra.phone.replace(/\D/g, '');
+  const eventObj = {
+    event_name:  eventName,
+    event_id:    eventId,
+    event_time:  Math.floor(Date.now() / 1000),
+    user_data:   userData,
+    custom_data: {
+      value:        (extra && extra.value)    || DEFAULT_VALUE,
+      currency:     'BRL',
+      content_name: 'Glivia',
+      content_id:   'glivia'
+    }
+  };
+  if (kwaiEventId) eventObj.event_type_id = kwaiEventId;
   const payload = {
     pixel_id: pixelId,
-    events: [{
-      event_name:  eventName,
-      event_id:    eventId,
-      event_time:  Math.floor(Date.now() / 1000),
-      user_data:   userData,
-      custom_data: {
-        value:        (extra && extra.value)    || DEFAULT_VALUE,
-        currency:     'BRL',
-        content_name: 'Glivia',
-        content_id:   'glivia'
-      }
-    }]
+    events: [eventObj]
   };
   try {
     const res = await fetch(
