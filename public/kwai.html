@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Kwai Tracker — Infinity Track</title>
 <style>
-:root{--bg:#0a0a0a;--sur:#111;--sur2:#1a1a1a;--bor:#2a2a2a;--txt:#fff;--mut:#888;--red:#cc0000;--red2:#ff4444;--blu:#58a6ff;--grn:#3fb950;--yel:#d29922;}
+:root{--bg:#0a0a0a;--sur:#111;--sur2:#1a1a1a;--bor:#2a2a2a;--txt:#fff;--mut:#888;--red:#cc0000;--red2:#ff4444;--blu:#58a6ff;--grn:#3fb950;--yel:#d29922;--pur:#bc8cff;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;}
 body::before{content:"";position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#c00,#f00,#c00);z-index:9999;}
 #LS{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at center,#1a0000 0%,#0a0a0a 70%);}
 .LB{background:var(--sur);border:1px solid #c00044;border-radius:16px;padding:48px 40px;width:100%;max-width:420px;text-align:center;box-shadow:0 0 60px #c00033;}
 #APP{display:none;}
-.SB{position:fixed;top:0;left:0;width:230px;height:100vh;background:var(--sur);border-right:1px solid var(--bor);display:flex;flex-direction:column;z-index:100;}
+.SB{position:fixed;top:0;left:0;width:230px;height:100vh;background:var(--sur);border-right:1px solid var(--bor);display:flex;flex-direction:column;z-index:100;overflow-y:auto;}
 .SL{padding:24px 20px;border-bottom:1px solid var(--bor);background:linear-gradient(135deg,#1a0000,#0a0a0a);}
 .SL-title{font-size:16px;font-weight:700;}
 .SL-sub{font-size:9px;color:var(--mut);letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
@@ -28,17 +28,17 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:3px;backgroun
 .PH h2{font-size:24px;font-weight:700;margin-bottom:4px;}
 .PH p{color:var(--mut);font-size:13px;}
 .CR{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.CR5{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px;}
 .SC{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:20px;position:relative;overflow:hidden;}
 .SC::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),transparent);}
 .SL2{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;}
-.SV{font-size:30px;font-weight:700;}
+.SV{font-size:28px;font-weight:700;}
 .SS{font-size:12px;color:var(--mut);margin-top:6px;}
 .CD{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:22px;margin-bottom:20px;}
 .CDT{font-weight:600;font-size:14px;margin-bottom:16px;}
 label{display:block;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;font-weight:500;}
 input,select{width:100%;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:10px 14px;color:var(--txt);font-size:14px;outline:none;transition:border 0.15s;}
-input:focus{border-color:var(--red);}
-input::placeholder{color:#555;}
+input:focus{border-color:var(--red);}input::placeholder{color:#555;}
 .FG{margin-bottom:16px;}
 .FR{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .BT{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;transition:all 0.15s;}
@@ -67,15 +67,19 @@ td{padding:10px 14px;border-bottom:1px solid var(--bor);vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:rgba(255,255,255,0.02);}
 .BDG{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;}
-.BDG.lead{background:rgba(88,166,255,0.15);color:var(--blu);}
+.BDG.visitou{background:rgba(136,136,136,0.15);color:var(--mut);}
+.BDG.clicou{background:rgba(88,166,255,0.15);color:var(--blu);}
 .BDG.purchased{background:rgba(63,185,80,0.15);color:var(--grn);}
-.result-box{background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:20px;margin-top:16px;display:none;}
+/* REF badge */
+.ref-badge{display:inline-block;background:rgba(188,140,255,0.15);color:var(--pur);border:1px solid rgba(188,140,255,0.3);border-radius:6px;padding:3px 10px;font-family:monospace;font-size:13px;font-weight:700;letter-spacing:1px;}
+/* Result card */
+.result-box{background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:22px;margin-top:16px;display:none;}
 .result-box.show{display:block;}
-.result-phone{font-size:20px;font-weight:700;font-family:monospace;margin-bottom:4px;}
+.result-ref{font-size:24px;font-weight:700;font-family:monospace;color:var(--pur);margin-bottom:4px;}
 .result-meta{font-size:12px;color:var(--mut);margin-bottom:16px;}
-.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
 .rfield label{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:3px;}
-.rfield span{font-size:13px;font-family:monospace;}
+.rfield span{font-size:13px;font-family:monospace;color:var(--txt);}
 .purchase-row{display:flex;gap:12px;align-items:flex-end;padding-top:16px;border-top:1px solid var(--bor);}
 .val-input{width:130px;background:var(--sur);border:1px solid var(--bor);border-radius:8px;padding:10px 14px;color:var(--txt);font-size:15px;font-weight:700;text-align:center;outline:none;}
 .val-input:focus{border-color:var(--grn);}
@@ -87,18 +91,14 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .WB{background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:14px 16px;font-family:monospace;font-size:12px;color:var(--red);word-break:break-all;margin-top:8px;position:relative;line-height:1.7;}
 .CB{position:absolute;top:10px;right:10px;background:var(--sur);border:1px solid var(--bor);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--mut);}
 .CB:hover{color:var(--red);border-color:var(--red);}
-/* Número card */
 .num-card{background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;}
 .num-check{width:18px;height:18px;cursor:pointer;accent-color:var(--red);flex-shrink:0;}
 .num-info{flex:1;}
-.num-label{font-size:13px;font-weight:600;color:var(--txt);}
+.num-label{font-size:13px;font-weight:600;}
 .num-number{font-family:monospace;font-size:12px;color:var(--mut);}
-.num-actions{display:flex;gap:6px;flex-shrink:0;}
-/* Link gerado */
 .link-box{background:rgba(88,166,255,0.06);border:1px solid rgba(88,166,255,0.2);border-radius:10px;padding:16px;margin-top:16px;display:none;}
 .link-box.show{display:block;}
 .link-url{font-family:monospace;font-size:11px;color:var(--blu);word-break:break-all;background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:10px 12px;margin:10px 0;}
-.link-info{font-size:12px;color:var(--mut);margin-top:6px;}
 </style>
 </head>
 <body>
@@ -139,18 +139,19 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
     <!-- DASHBOARD -->
     <div id="page-dashboard" class="PG active">
-      <div class="PH"><h2>Dashboard Kwai</h2><p>Leads capturados e purchases disparados</p></div>
-      <div class="CR">
-        <div class="SC"><div class="SL2">Leads Hoje</div><div class="SV" style="color:var(--blu)" id="sk-leads-hoje">—</div><div class="SS">clicaram no WhatsApp</div></div>
+      <div class="PH"><h2>Dashboard Kwai</h2><p>Atribuição de leads e purchases</p></div>
+      <div class="CR5">
+        <div class="SC"><div class="SL2">Leads Hoje</div><div class="SV" style="color:var(--blu)" id="sk-leads-hoje">—</div><div class="SS">visitaram a pretzel</div></div>
+        <div class="SC"><div class="SL2">Cliques Hoje</div><div class="SV" style="color:var(--pur)" id="sk-cliques">—</div><div class="SS">foram pro WhatsApp</div></div>
         <div class="SC"><div class="SL2">Vendas Hoje</div><div class="SV" style="color:var(--grn)" id="sk-vendas-hoje">—</div><div class="SS">purchases disparados</div></div>
         <div class="SC"><div class="SL2">Total Leads</div><div class="SV" style="color:var(--red)" id="sk-total">—</div><div class="SS">todos os tempos</div></div>
-        <div class="SC"><div class="SL2">Conversão</div><div class="SV" style="color:var(--yel)" id="sk-taxa">—</div><div class="SS">% de fechamento</div></div>
+        <div class="SC"><div class="SL2">Conversão</div><div class="SV" style="color:var(--yel)" id="sk-taxa">—</div><div class="SS">clique → venda</div></div>
       </div>
       <div class="CD">
-        <div class="CDT">Últimos leads recebidos</div>
+        <div class="CDT">Últimos leads</div>
         <div class="TW">
           <table>
-            <thead><tr><th>Click ID</th><th>Número</th><th>Campanha</th><th>Status</th><th>Horário</th><th>Ação</th></tr></thead>
+            <thead><tr><th>REF</th><th>Status</th><th>Click ID</th><th>Número</th><th>Horário</th><th>Ação</th></tr></thead>
             <tbody id="dash-tbody"><tr><td colspan="6" style="text-align:center;color:var(--mut);padding:40px">Carregando...</td></tr></tbody>
           </table>
         </div>
@@ -159,33 +160,42 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
     <!-- DISPARAR -->
     <div id="page-disparar" class="PG">
-      <div class="PH"><h2>Disparar Purchase</h2><p>Busque o número do cliente e dispare a conversão</p></div>
+      <div class="PH"><h2>Disparar Purchase</h2><p>Digite o REF que apareceu na mensagem do lead ou o número dele</p></div>
       <div class="CD">
-        <div class="CDT">🔍 Buscar lead pelo número</div>
+        <div style="background:rgba(188,140,255,0.08);border:1px solid rgba(188,140,255,0.2);border-radius:10px;padding:16px;margin-bottom:20px;">
+          <div style="font-size:13px;font-weight:600;color:var(--pur);margin-bottom:6px;">📌 Como usar</div>
+          <div style="font-size:13px;color:var(--mut);line-height:1.7">
+            Quando o lead entrar em contato, a mensagem dele vai ter: <strong style="color:var(--txt)">"Olá! Gostaria de saber mais sobre o tratamento. REF:A3K9F2"</strong><br>
+            Copie o código REF e cole abaixo para encontrar o lead e disparar o Purchase.
+          </div>
+        </div>
+        <div class="CDT">🔍 Buscar por REF ou número</div>
         <div style="display:flex;gap:10px;">
-          <input type="text" id="search-phone" placeholder="Ex: 62999887766" style="flex:1" onkeydown="if(event.key==='Enter')buscarLead()"/>
+          <input type="text" id="search-ref" placeholder="REF:A3K9F2 ou número do lead" style="flex:1;font-family:monospace;font-size:15px" onkeydown="if(event.key==='Enter')buscarLead()"/>
           <button class="BT BS BSM" onclick="buscarLead()">Buscar</button>
         </div>
         <div class="result-box" id="result-box">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
             <div>
-              <div class="result-phone" id="r-phone">—</div>
+              <div class="result-ref" id="r-ref">—</div>
               <div class="result-meta" id="r-meta">—</div>
             </div>
-            <span class="BDG" id="r-status-badge">lead</span>
+            <span class="BDG" id="r-status-badge">—</span>
           </div>
           <div class="result-grid">
             <div class="rfield"><label>Click ID Kwai</label><span id="r-clickid">—</span></div>
-            <div class="rfield"><label>ID do Lead</label><span id="r-id">—</span></div>
-            <div class="rfield"><label>Campanha</label><span id="r-campaign">—</span></div>
+            <div class="rfield"><label>Telefone lead</label><span id="r-phone">—</span></div>
             <div class="rfield"><label>Número destino</label><span id="r-wpp">—</span></div>
+            <div class="rfield"><label>UTM Campaign</label><span id="r-campaign">—</span></div>
+            <div class="rfield"><label>UTM Source</label><span id="r-source">—</span></div>
+            <div class="rfield"><label>Cliques</label><span id="r-clicks">—</span></div>
           </div>
           <div class="AL AS" id="purchase-success"></div>
           <div class="AL AE" id="purchase-error"></div>
           <div class="purchase-row">
             <div>
               <label style="margin-bottom:6px">Valor (R$)</label>
-              <input type="number" class="val-input" id="purchase-value" value="297"/>
+              <input type="number" class="val-input" id="purchase-value" value="497"/>
             </div>
             <button class="BT BG" id="btn-purchase" onclick="dispararPurchase()" style="flex:1">
               ⚡ Disparar Purchase nos 2 Pixels
@@ -193,7 +203,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
           </div>
         </div>
         <div id="multi-results" style="display:none;margin-top:12px">
-          <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Vários leads encontrados. Selecione:</p>
+          <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Vários resultados. Selecione o correto:</p>
           <div id="multi-list"></div>
         </div>
       </div>
@@ -201,81 +211,59 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
     <!-- NÚMEROS -->
     <div id="page-numeros" class="PG">
-      <div class="PH"><h2>Números WhatsApp</h2><p>Cadastre até 20 números e gere links com randomização automática</p></div>
-
-      <!-- Adicionar -->
+      <div class="PH"><h2>Números WhatsApp</h2><p>Cadastre até 20 números e gere links com randomização</p></div>
       <div class="CD">
         <div class="CDT">➕ Adicionar número</div>
         <div class="FR" style="margin-bottom:12px">
-          <div class="FG" style="margin:0">
-            <label>Nome / Identificação</label>
-            <input type="text" id="num-label" placeholder="Ex: Closer Bruno, Chip 1"/>
-          </div>
-          <div class="FG" style="margin:0">
-            <label>Número com DDI e DDD</label>
-            <input type="text" id="num-number" placeholder="Ex: 5562981585394" onkeydown="if(event.key==='Enter')addNumber()"/>
-          </div>
+          <div class="FG" style="margin:0"><label>Nome / Identificação</label><input type="text" id="num-label" placeholder="Ex: Closer Bruno, Chip 1"/></div>
+          <div class="FG" style="margin:0"><label>Número com DDI e DDD</label><input type="text" id="num-number" placeholder="Ex: 5562981585394" onkeydown="if(event.key==='Enter')addNumber()"/></div>
         </div>
         <button class="BT BG BSM" onclick="addNumber()" style="width:auto">Adicionar número</button>
         <div class="AL AS" id="num-success" style="margin-top:12px"></div>
         <div class="AL AE" id="num-error" style="margin-top:12px"></div>
       </div>
-
-      <!-- Lista + Gerador -->
       <div class="CD">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
           <div class="CDT" style="margin:0">📱 Números cadastrados</div>
           <div style="display:flex;gap:8px">
             <button class="BCY" onclick="selecionarTodos()">Selecionar todos</button>
-            <button class="BCY" onclick="deselecionarTodos()">Limpar seleção</button>
+            <button class="BCY" onclick="deselecionarTodos()">Limpar</button>
           </div>
         </div>
         <div id="numbers-list"><p style="color:var(--mut);font-size:13px">Carregando...</p></div>
-
-        <!-- Gerador de link -->
         <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--bor)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <div>
               <div style="font-size:14px;font-weight:600;margin-bottom:2px">🔗 Gerar link</div>
-              <div style="font-size:12px;color:var(--mut)">Marque os números desejados e clique em gerar</div>
+              <div style="font-size:12px;color:var(--mut)">Marque os números e clique em gerar</div>
             </div>
             <button class="BT BG BSM" onclick="gerarLink()" style="width:auto">Gerar link</button>
           </div>
-
           <div class="link-box" id="link-box">
             <div style="font-size:13px;font-weight:600;margin-bottom:4px" id="link-titulo">—</div>
             <div class="link-url" id="link-url">—</div>
             <div style="display:flex;gap:8px;margin-top:10px">
               <button class="BCY" onclick="copiarLink()">📋 Copiar link</button>
             </div>
-            <div class="link-info" id="link-info">—</div>
+            <div style="font-size:12px;color:var(--mut);margin-top:8px" id="link-info">—</div>
           </div>
         </div>
-      </div>
-
-      <div class="CD" style="background:rgba(88,166,255,0.04);border-color:rgba(88,166,255,0.15)">
-        <div class="CDT" style="color:var(--blu)">💡 Como funciona a randomização</div>
-        <p style="font-size:13px;color:var(--mut);line-height:1.8">
-          Quando você seleciona múltiplos números e gera o link, <strong>um único link</strong> é gerado.<br>
-          Cada lead que clicar será direcionado aleatoriamente para um dos números selecionados.<br>
-          O sistema registra qual número recebeu cada lead — visível na aba Leads.<br>
-          <strong>Limite:</strong> até 20 números cadastrados.
-        </p>
       </div>
     </div>
 
     <!-- LEADS -->
     <div id="page-leads" class="PG">
-      <div class="PH"><h2>Todos os Leads</h2><p>Histórico completo</p></div>
+      <div class="PH"><h2>Todos os Leads</h2><p>Histórico completo com atribuição</p></div>
       <div class="TB">
         <div class="TT active" onclick="filtrar(this,'')">Todos</div>
-        <div class="TT" onclick="filtrar(this,'lead')">Leads</div>
+        <div class="TT" onclick="filtrar(this,'visitou')">Visitou</div>
+        <div class="TT" onclick="filtrar(this,'clicou')">Clicou</div>
         <div class="TT" onclick="filtrar(this,'purchased')">Vendas</div>
       </div>
       <div class="CD" style="padding:0">
         <div class="TW">
           <table>
-            <thead><tr><th>ID</th><th>Telefone</th><th>Click ID</th><th>Número</th><th>Status</th><th>Valor</th><th>Data</th><th>Ação</th></tr></thead>
+            <thead><tr><th>REF</th><th>Telefone</th><th>Click ID</th><th>Campaign</th><th>Status</th><th>Valor</th><th>Data</th><th>Ação</th></tr></thead>
             <tbody id="leads-tbody"><tr><td colspan="8" style="text-align:center;color:var(--mut);padding:40px">Carregando...</td></tr></tbody>
           </table>
         </div>
@@ -284,43 +272,74 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
     <!-- SETUP -->
     <div id="page-setup" class="PG">
-      <div class="PH"><h2>Setup</h2><p>Instruções de integração</p></div>
+      <div class="PH"><h2>Setup</h2><p>Instruções completas de integração</p></div>
       <div class="CD">
         <div class="CDT">1. Script para o &lt;head&gt; da pretzel</div>
-        <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Captura o click ID do Kwai automaticamente e atualiza os links:</p>
+        <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Substitui o script antigo por este. Captura click ID, gera Lead ID e atualiza o botão automaticamente:</p>
         <div class="WB" id="code-pretzel">
           <button class="CB" onclick="copiar('code-pretzel')">Copiar</button>
 &lt;script&gt;
 (function(){
+  var BASE = 'https://capi-track-production.up.railway.app';
+
   function gp(n){var r=new RegExp('[?&]'+n+'=([^&#]*)').exec(location.href);return r?decodeURIComponent(r[1]):null;}
-  var cid=gp('clickid')||gp('kwai_click_id')||gp('kpf')||gp('click_id');
-  if(cid){
+
+  var kwai_click_id = gp('clickid')||gp('kwai_click_id')||gp('kpf')||gp('click_id');
+  var utm_source    = gp('utm_source');
+  var utm_campaign  = gp('utm_campaign');
+  var utm_adset     = gp('utm_adset')||gp('utm_content');
+  var utm_ad        = gp('utm_ad')||gp('utm_term');
+  var session_id    = 'sess_' + Math.random().toString(36).substring(2,10);
+
+  // Cria o Lead ID no servidor
+  fetch(BASE + '/kwai/lead/criar', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      kwai_click_id: kwai_click_id,
+      utm_source: utm_source,
+      utm_campaign: utm_campaign,
+      utm_adset: utm_adset,
+      utm_ad: utm_ad,
+      session_id: session_id
+    })
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(!d.lead_id) return;
+    var lid = d.lead_id;
+    // Salva em cookie e localStorage
     var e=new Date();e.setDate(e.getDate()+7);
-    document.cookie='kwai_cid='+cid+';expires='+e.toUTCString()+';path=/';
-    try{localStorage.setItem('kwai_cid',cid);}catch(x){}
-  }
-  document.addEventListener('DOMContentLoaded',function(){
-    function gc(n){var m=document.cookie.match(new RegExp('(^| )'+n+'=([^;]+)'));return m?m[2]:null;}
-    var id=gc('kwai_cid')||(function(){try{return localStorage.getItem('kwai_cid')}catch(x){return null}})();
-    if(id){
-      document.querySelectorAll('a[href*="capi-track-production.up.railway.app/kwai/ir"]').forEach(function(a){
-        var url=new URL(a.href);url.searchParams.set('cid',id);a.href=url.toString();
-      });
-    }
-  });
+    document.cookie='kwai_lid='+lid+';expires='+e.toUTCString()+';path=/';
+    try{localStorage.setItem('kwai_lid',lid);}catch(x){}
+    // Atualiza todos os links do botão com o lead_id
+    document.querySelectorAll('a[href*="/kwai/ir"]').forEach(function(a){
+      try{var u=new URL(a.href);u.searchParams.set('lid',lid);a.href=u.toString();}catch(x){}
+    });
+  })
+  .catch(function(){});
 })();
 &lt;/script&gt;
         </div>
+        <p style="font-size:12px;color:var(--yel);margin-top:10px">⚠️ Substitui completamente o script antigo. O pixel do Kwai fica separado.</p>
       </div>
       <div class="CD">
         <div class="CDT">2. Link do botão</div>
-        <p style="font-size:13px;color:var(--mut)">Vá em <strong>Números WhatsApp</strong>, selecione os números e clique em <strong>Gerar link</strong>. Cole o link gerado no botão do Elementor.</p>
+        <p style="font-size:13px;color:var(--mut)">Vá em <strong>Números WhatsApp</strong>, selecione os números e clique em <strong>Gerar link</strong>. Cole no botão do Elementor.</p>
       </div>
       <div class="CD">
-        <div class="CDT">3. Pixels configurados</div>
+        <div class="CDT">3. Como o closer usa</div>
+        <p style="font-size:13px;color:var(--mut);line-height:1.8">
+          O lead vai chegar no WhatsApp com a mensagem:<br>
+          <span style="font-family:monospace;color:var(--pur);background:var(--sur2);padding:4px 10px;border-radius:6px;display:inline-block;margin:6px 0">"Olá! Gostaria de saber mais sobre o tratamento. REF:A3K9F2"</span><br>
+          O closer copia o código REF, abre <strong>Disparar Purchase</strong>, cola o REF, confirma o valor e dispara.
+        </p>
+      </div>
+      <div class="CD">
+        <div class="CDT">4. Pixels configurados</div>
         <div class="WB" style="color:var(--grn)">Pixel 1: 304883249383318
 Pixel 2: 308803017463304
-Evento: PURCHASE | Produto: Glivia | Moeda: BRL</div>
+Evento: PURCHASE | Valor padrão: R$ 497 | Moeda: BRL</div>
       </div>
     </div>
 
@@ -328,15 +347,15 @@ Evento: PURCHASE | Produto: Glivia | Moeda: BRL</div>
 </div>
 
 <script>
-var authToken = localStorage.getItem('kwai_auth') || '';
+var authToken = localStorage.getItem('kwai_auth')||'';
 var currentLead = null;
 var currentFilter = '';
 var allNumbers = [];
 var BASE = 'https://capi-track-production.up.railway.app';
 
-function doLogin() {
-  var pw = document.getElementById('login-password').value;
-  if (!pw) return;
+function doLogin(){
+  var pw=document.getElementById('login-password').value;
+  if(!pw)return;
   fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})})
     .then(function(r){return r.json();}).then(function(d){
       if(d.token){authToken=d.token;localStorage.setItem('kwai_auth',authToken);initApp();}
@@ -370,6 +389,7 @@ function loadStats(){
   api('GET','/api/kwai/stats').then(function(d){
     if(!d)return;
     document.getElementById('sk-leads-hoje').textContent=d.leads_hoje;
+    document.getElementById('sk-cliques').textContent=d.total_cliques||0;
     document.getElementById('sk-vendas-hoje').textContent=d.vendas_hoje;
     document.getElementById('sk-total').textContent=d.total_leads;
     document.getElementById('sk-taxa').textContent=d.taxa_conversao;
@@ -381,161 +401,45 @@ function loadDashLeads(){
   api('GET','/api/kwai/leads?limit=10').then(function(d){
     if(!d)return;
     var tb=document.getElementById('dash-tbody');
-    if(!d.leads||!d.leads.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead ainda.</td></tr>';return;}
+    if(!d.leads||!d.leads.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead ainda. Configure o script na pretzel.</td></tr>';return;}
     tb.innerHTML=d.leads.map(function(l){
       return '<tr>'+
-        '<td style="font-family:monospace;font-size:11px;color:var(--mut)">'+(l.click_id?l.click_id.substring(0,16)+'...':'—')+'</td>'+
+        '<td><span class="ref-badge">'+(l.lead_id||'—')+'</span></td>'+
+        '<td><span class="BDG '+l.status+'">'+(l.status==='purchased'?'✓ Venda':l.status==='clicou'?'● Clicou':'○ Visitou')+'</span></td>'+
+        '<td style="font-family:monospace;font-size:11px;color:var(--mut)">'+(l.kwai_click_id?l.kwai_click_id.substring(0,14)+'...':'—')+'</td>'+
         '<td style="font-family:monospace;font-size:12px">'+(l.wpp_number||'—')+'</td>'+
-        '<td>'+(l.campaign_id||'—')+'</td>'+
-        '<td><span class="BDG '+l.status+'">'+(l.status==='purchased'?'✓ Venda':'● Lead')+'</span></td>'+
         '<td style="color:var(--mut);font-size:12px">'+fmtDate(l.created_at)+'</td>'+
-        '<td>'+(l.status!=='purchased'?'<button class="BGS" onclick="quickPurchase('+l.id+')">⚡ Purchase</button>':'<span style="color:var(--grn);font-size:12px">R$ '+(l.purchase_value||'—')+'</span>')+'</td>'+
+        '<td>'+(l.status!=='purchased'?'<button class="BGS" onclick="quickPurchase(\''+l.lead_id+'\')">⚡</button>':'<span style="color:var(--grn);font-size:12px">R$ '+(l.purchase_value||'—')+'</span>')+'</td>'+
       '</tr>';
     }).join('');
   });
 }
 
-// ── NÚMEROS ───────────────────────────────────────────────
-function loadNumbers(){
-  api('GET','/api/kwai/numbers').then(function(d){
-    if(!d)return;
-    allNumbers=d.numbers||[];
-    var el=document.getElementById('numbers-list');
-    if(!allNumbers.length){
-      el.innerHTML='<p style="color:var(--mut);font-size:13px">Nenhum número cadastrado. Adicione acima.</p>';
-      return;
-    }
-    el.innerHTML=allNumbers.map(function(n){
-      return '<div class="num-card" id="num-card-'+n.id+'">'+
-        '<input type="checkbox" class="num-check" id="chk-'+n.id+'" value="'+n.number+'" onchange="atualizarContador()"/>'+
-        '<div class="num-info">'+
-          '<div class="num-label">'+n.label+'</div>'+
-          '<div class="num-number">+'+n.number+'</div>'+
-        '</div>'+
-        '<div class="num-actions">'+
-          '<button class="BRD" onclick="deleteNumber('+n.id+')">✕ Remover</button>'+
-        '</div>'+
-      '</div>';
-    }).join('');
-    atualizarContador();
-    // Esconde o link ao recarregar
-    document.getElementById('link-box').classList.remove('show');
-  });
-}
-
-function atualizarContador(){
-  var selecionados=getSelecionados();
-  // apenas feedback visual futuro
-}
-
-function getSelecionados(){
-  var checked=[];
-  allNumbers.forEach(function(n){
-    var chk=document.getElementById('chk-'+n.id);
-    if(chk&&chk.checked)checked.push(n.number);
-  });
-  return checked;
-}
-
-function selecionarTodos(){
-  allNumbers.forEach(function(n){
-    var chk=document.getElementById('chk-'+n.id);
-    if(chk)chk.checked=true;
-  });
-}
-
-function deselecionarTodos(){
-  allNumbers.forEach(function(n){
-    var chk=document.getElementById('chk-'+n.id);
-    if(chk)chk.checked=false;
-  });
-  document.getElementById('link-box').classList.remove('show');
-}
-
-function gerarLink(){
-  var selecionados=getSelecionados();
-  if(!selecionados.length){alert('Selecione pelo menos um número.');return;}
-
-  var box=document.getElementById('link-box');
-  var urlEl=document.getElementById('link-url');
-  var tituloEl=document.getElementById('link-titulo');
-  var infoEl=document.getElementById('link-info');
-
-  var link='';
-  if(selecionados.length===1){
-    // número único
-    link=BASE+'/kwai/ir?phone='+selecionados[0]+'&campaign_id=glivia';
-    tituloEl.textContent='Link único — '+selecionados[0];
-    infoEl.textContent='Todos os leads vão para este número.';
-  } else {
-    // múltiplos — randomização
-    link=BASE+'/kwai/ir?phones='+selecionados.join(',')+'&campaign_id=glivia';
-    tituloEl.textContent='Link com randomização — '+selecionados.length+' números';
-    infoEl.textContent='Cada lead será direcionado aleatoriamente para um dos '+selecionados.length+' números selecionados.';
-  }
-
-  urlEl.textContent=link;
-  box.classList.add('show');
-}
-
-function copiarLink(){
-  var text=document.getElementById('link-url').textContent;
-  navigator.clipboard.writeText(text).then(function(){
-    var btn=event.target;
-    btn.textContent='✓ Copiado!';
-    setTimeout(function(){btn.textContent='📋 Copiar link';},2000);
-  });
-}
-
-function addNumber(){
-  var label=document.getElementById('num-label').value.trim();
-  var number=document.getElementById('num-number').value.trim().replace(/\D/g,'');
-  if(!number){showAlert('num-error','Digite o número');return;}
-  if(number.length<10){showAlert('num-error','Número inválido. Inclua DDI e DDD. Ex: 5562981585394');return;}
-  if(allNumbers.length>=20){showAlert('num-error','Limite de 20 números atingido');return;}
-  hideAlert('num-error');
-  api('POST','/api/kwai/numbers',{label:label||number,number:number}).then(function(d){
-    if(d&&d.ok){
-      showAlert('num-success','✅ Número adicionado!');
-      document.getElementById('num-label').value='';
-      document.getElementById('num-number').value='';
-      loadNumbers();
-    } else {
-      showAlert('num-error',(d&&d.error)||'Erro ao adicionar');
-    }
-  });
-}
-
-function deleteNumber(id){
-  if(!confirm('Remover este número?'))return;
-  api('DELETE','/api/kwai/numbers/'+id).then(function(d){
-    if(d&&d.ok)loadNumbers();
-  });
-}
-
 // ── BUSCAR / DISPARAR ─────────────────────────────────────
 function buscarLead(){
-  var phone=document.getElementById('search-phone').value.trim();
-  if(!phone)return;
+  var q=document.getElementById('search-ref').value.trim().toUpperCase().replace('REF:','');
+  if(!q)return;
   document.getElementById('result-box').classList.remove('show');
   document.getElementById('multi-results').style.display='none';
-  api('GET','/api/kwai/lead/'+encodeURIComponent(phone)).then(function(d){
-    if(!d||!d.leads.length){alert('Nenhum lead encontrado');return;}
+  api('GET','/api/kwai/lead/'+encodeURIComponent(q)).then(function(d){
+    if(!d||!d.leads.length){alert('Lead não encontrado. Verifique o REF ou número.');return;}
     if(d.leads.length===1){mostrarLead(d.leads[0]);}else{mostrarMultiplos(d.leads);}
   });
 }
 
 function mostrarLead(lead){
   currentLead=lead;
-  document.getElementById('r-phone').textContent=lead.phone?fmtPhone(lead.phone):'(sem número)';
+  document.getElementById('r-ref').textContent='REF:' + (lead.lead_id||'—');
   document.getElementById('r-meta').textContent='ID #'+lead.id+' — '+fmtDate(lead.created_at);
-  document.getElementById('r-clickid').textContent=lead.click_id||'(sem click ID)';
-  document.getElementById('r-id').textContent='#'+lead.id;
-  document.getElementById('r-campaign').textContent=lead.campaign_id||'—';
+  document.getElementById('r-clickid').textContent=lead.kwai_click_id||'(sem click ID)';
+  document.getElementById('r-phone').textContent=lead.phone?fmtPhone(lead.phone):'(não informado)';
   document.getElementById('r-wpp').textContent=lead.wpp_number||'—';
+  document.getElementById('r-campaign').textContent=lead.utm_campaign||'—';
+  document.getElementById('r-source').textContent=lead.utm_source||'—';
+  document.getElementById('r-clicks').textContent=lead.clicks||0;
   var badge=document.getElementById('r-status-badge');
   badge.className='BDG '+lead.status;
-  badge.textContent=lead.status==='purchased'?'✓ Venda realizada':'● Lead ativo';
+  badge.textContent=lead.status==='purchased'?'✓ Venda realizada':lead.status==='clicou'?'● Clicou':'○ Visitou';
   var btn=document.getElementById('btn-purchase');
   if(lead.status==='purchased'){btn.disabled=true;btn.textContent='✓ Purchase já disparado';}
   else{btn.disabled=false;btn.textContent='⚡ Disparar Purchase nos 2 Pixels';}
@@ -548,9 +452,8 @@ function mostrarMultiplos(leads){
   var list=document.getElementById('multi-list');
   list.innerHTML=leads.map(function(l){
     return '<div class="multi-item" onclick=\'mostrarLead('+JSON.stringify(l).replace(/'/g,"&#39;")+')\'>'+
-      '<div><div style="font-family:monospace">'+(l.phone?fmtPhone(l.phone):'ID #'+l.id)+'</div>'+
-      '<div style="font-size:11px;color:var(--mut);margin-top:2px">'+fmtDate(l.created_at)+'</div></div>'+
-      '<span class="BDG '+l.status+'">'+(l.status==='purchased'?'✓ Venda':'● Lead')+'</span>'+
+      '<div><span class="ref-badge">'+(l.lead_id||'#'+l.id)+'</span> <span style="font-size:12px;color:var(--mut);margin-left:8px">'+fmtDate(l.created_at)+'</span></div>'+
+      '<span class="BDG '+l.status+'">'+(l.status==='purchased'?'✓ Venda':l.status==='clicou'?'● Clicou':'○ Visitou')+'</span>'+
     '</div>';
   }).join('');
   document.getElementById('multi-results').style.display='block';
@@ -558,12 +461,12 @@ function mostrarMultiplos(leads){
 
 function dispararPurchase(){
   if(!currentLead)return;
-  var value=parseFloat(document.getElementById('purchase-value').value)||297;
+  var value=parseFloat(document.getElementById('purchase-value').value)||497;
   var btn=document.getElementById('btn-purchase');
   btn.disabled=true;btn.textContent='Disparando...';
-  api('POST','/api/kwai/purchase',{lead_id:currentLead.id,value:value}).then(function(d){
+  api('POST','/api/kwai/purchase',{ref:currentLead.lead_id,value:value}).then(function(d){
     if(d&&d.success){
-      showAlert('purchase-success','✅ Purchase de R$ '+value.toFixed(2)+' disparado nos 2 pixels!');
+      showAlert('purchase-success','✅ Purchase de R$ '+value.toFixed(2)+' disparado nos 2 pixels! Click ID: '+(currentLead.kwai_click_id||'sem atribuição'));
       btn.textContent='✓ Disparado!';
       document.getElementById('r-status-badge').className='BDG purchased';
       document.getElementById('r-status-badge').textContent='✓ Venda realizada';
@@ -575,14 +478,87 @@ function dispararPurchase(){
   });
 }
 
-function quickPurchase(id){
-  if(!confirm('Disparar Purchase para lead #'+id+'?'))return;
-  api('POST','/api/kwai/purchase',{lead_id:id,value:297}).then(function(d){
+function quickPurchase(lead_id){
+  if(!confirm('Disparar Purchase para REF:'+lead_id+'?'))return;
+  api('POST','/api/kwai/purchase',{ref:lead_id,value:497}).then(function(d){
     if(d&&d.success){alert('✅ Purchase disparado!');loadStats();}
     else alert('Erro: '+((d&&d.error)||'Falha'));
   });
 }
 
+// ── NÚMEROS ───────────────────────────────────────────────
+function loadNumbers(){
+  api('GET','/api/kwai/numbers').then(function(d){
+    if(!d)return;
+    allNumbers=d.numbers||[];
+    var el=document.getElementById('numbers-list');
+    if(!allNumbers.length){el.innerHTML='<p style="color:var(--mut);font-size:13px">Nenhum número cadastrado.</p>';return;}
+    el.innerHTML=allNumbers.map(function(n){
+      return '<div class="num-card">'+
+        '<input type="checkbox" class="num-check" id="chk-'+n.id+'" value="'+n.number+'"/>'+
+        '<div class="num-info"><div class="num-label">'+n.label+'</div><div class="num-number">+'+n.number+'</div></div>'+
+        '<div><button class="BRD" onclick="deleteNumber('+n.id+')">✕</button></div>'+
+      '</div>';
+    }).join('');
+    document.getElementById('link-box').classList.remove('show');
+  });
+}
+
+function getSelecionados(){
+  var checked=[];
+  allNumbers.forEach(function(n){var c=document.getElementById('chk-'+n.id);if(c&&c.checked)checked.push(n.number);});
+  return checked;
+}
+
+function selecionarTodos(){allNumbers.forEach(function(n){var c=document.getElementById('chk-'+n.id);if(c)c.checked=true;});}
+function deselecionarTodos(){allNumbers.forEach(function(n){var c=document.getElementById('chk-'+n.id);if(c)c.checked=false;});document.getElementById('link-box').classList.remove('show');}
+
+function gerarLink(){
+  var sel=getSelecionados();
+  if(!sel.length){alert('Selecione pelo menos um número.');return;}
+  var link='',titulo='',info='';
+  if(sel.length===1){
+    link=BASE+'/kwai/ir?phone='+sel[0]+'&campaign_id=glivia';
+    titulo='Link único — '+sel[0];
+    info='Todos os leads vão para este número.';
+  } else {
+    link=BASE+'/kwai/ir?phones='+sel.join(',')+'&campaign_id=glivia';
+    titulo='Link com randomização — '+sel.length+' números';
+    info='Cada lead será direcionado aleatoriamente para um dos '+sel.length+' números.';
+  }
+  document.getElementById('link-url').textContent=link;
+  document.getElementById('link-titulo').textContent=titulo;
+  document.getElementById('link-info').textContent=info;
+  document.getElementById('link-box').classList.add('show');
+}
+
+function copiarLink(){
+  var text=document.getElementById('link-url').textContent;
+  navigator.clipboard.writeText(text).then(function(){
+    event.target.textContent='✓ Copiado!';
+    setTimeout(function(){event.target.textContent='📋 Copiar link';},2000);
+  });
+}
+
+function addNumber(){
+  var label=document.getElementById('num-label').value.trim();
+  var number=document.getElementById('num-number').value.trim().replace(/\D/g,'');
+  if(!number){showAlert('num-error','Digite o número');return;}
+  if(number.length<10){showAlert('num-error','Número inválido. Ex: 5562981585394');return;}
+  if(allNumbers.length>=20){showAlert('num-error','Limite de 20 números atingido');return;}
+  hideAlert('num-error');
+  api('POST','/api/kwai/numbers',{label:label||number,number:number}).then(function(d){
+    if(d&&d.ok){showAlert('num-success','✅ Número adicionado!');document.getElementById('num-label').value='';document.getElementById('num-number').value='';loadNumbers();}
+    else showAlert('num-error',(d&&d.error)||'Erro');
+  });
+}
+
+function deleteNumber(id){
+  if(!confirm('Remover este número?'))return;
+  api('DELETE','/api/kwai/numbers/'+id).then(function(d){if(d&&d.ok)loadNumbers();});
+}
+
+// ── LEADS TABLE ───────────────────────────────────────────
 function loadLeads(status){
   currentFilter=status;
   var tb=document.getElementById('leads-tbody');
@@ -591,31 +567,21 @@ function loadLeads(status){
     if(!d||!d.leads.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead</td></tr>';return;}
     tb.innerHTML=d.leads.map(function(l){
       return '<tr>'+
-        '<td style="color:var(--mut)">#'+l.id+'</td>'+
+        '<td><span class="ref-badge">'+(l.lead_id||'—')+'</span></td>'+
         '<td style="font-family:monospace">'+(l.phone?fmtPhone(l.phone):'—')+'</td>'+
-        '<td style="font-family:monospace;font-size:11px;color:var(--mut)">'+(l.click_id?l.click_id.substring(0,18)+'...':'—')+'</td>'+
-        '<td style="font-family:monospace;font-size:12px">'+(l.wpp_number||'—')+'</td>'+
-        '<td><span class="BDG '+l.status+'">'+(l.status==='purchased'?'✓ Venda':'● Lead')+'</span></td>'+
+        '<td style="font-family:monospace;font-size:11px;color:var(--mut)">'+(l.kwai_click_id?l.kwai_click_id.substring(0,16)+'...':'—')+'</td>'+
+        '<td style="font-size:12px">'+(l.utm_campaign||'—')+'</td>'+
+        '<td><span class="BDG '+l.status+'">'+(l.status==='purchased'?'✓ Venda':l.status==='clicou'?'● Clicou':'○ Visitou')+'</span></td>'+
         '<td style="color:var(--grn)">'+(l.purchase_value?'R$ '+l.purchase_value:'—')+'</td>'+
         '<td style="color:var(--mut);font-size:12px">'+fmtDate(l.created_at)+'</td>'+
-        '<td>'+(l.status!=='purchased'?'<button class="BGS" onclick="quickPurchase('+l.id+')">⚡</button>':'<span style="font-size:11px;color:var(--mut)">'+fmtDate(l.purchased_at)+'</span>')+'</td>'+
+        '<td>'+(l.status!=='purchased'?'<button class="BGS" onclick="quickPurchase(\''+l.lead_id+'\')">⚡</button>':'<span style="font-size:11px;color:var(--mut)">'+fmtDate(l.purchased_at)+'</span>')+'</td>'+
       '</tr>';
     }).join('');
   });
 }
 
-function filtrar(el,status){
-  document.querySelectorAll('.TT').forEach(function(t){t.classList.remove('active');});
-  el.classList.add('active');loadLeads(status);
-}
-
-function fmtPhone(p){
-  if(!p)return'—';
-  var d=p.replace(/\D/g,'');
-  if(d.length>=12)return'+'+d.substring(0,2)+' ('+d.substring(2,4)+') '+d.substring(4,9)+'-'+d.substring(9);
-  if(d.length===11)return'('+d.substring(0,2)+') '+d.substring(2,7)+'-'+d.substring(7);
-  return p;
-}
+function filtrar(el,status){document.querySelectorAll('.TT').forEach(function(t){t.classList.remove('active');});el.classList.add('active');loadLeads(status);}
+function fmtPhone(p){if(!p)return'—';var d=p.replace(/\D/g,'');if(d.length>=12)return'+'+d.substring(0,2)+' ('+d.substring(2,4)+') '+d.substring(4,9)+'-'+d.substring(9);if(d.length===11)return'('+d.substring(0,2)+') '+d.substring(2,7)+'-'+d.substring(7);return p;}
 function fmtDate(dt){if(!dt)return'—';return new Date(dt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
 function showAlert(id,msg){var el=document.getElementById(id);if(!el)return;el.textContent=msg;el.classList.add('show');}
 function hideAlert(id){var el=document.getElementById(id);if(el)el.classList.remove('show');}
@@ -626,7 +592,6 @@ function copiar(id){
     if(btn){btn.textContent='✓ Copiado';setTimeout(function(){btn.textContent='Copiar';},2000);}
   });
 }
-
 if(authToken)initApp();
 </script>
 </body>
