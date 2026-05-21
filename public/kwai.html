@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Kwai Tracker — Infinity Track</title>
 <style>
-:root{--bg:#0a0a0a;--sur:#111;--sur2:#1a1a1a;--bor:#2a2a2a;--txt:#fff;--mut:#888;--red:#cc0000;--red2:#ff4444;--blu:#58a6ff;--grn:#3fb950;--grn2:rgba(63,185,80,0.15);--yel:#d29922;}
+:root{--bg:#0a0a0a;--sur:#111;--sur2:#1a1a1a;--bor:#2a2a2a;--txt:#fff;--mut:#888;--red:#cc0000;--red2:#ff4444;--blu:#58a6ff;--grn:#3fb950;--yel:#d29922;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;}
 body::before{content:"";position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#c00,#f00,#c00);z-index:9999;}
@@ -54,7 +54,7 @@ input::placeholder{color:#555;}
 .BGS:hover{background:rgba(63,185,80,0.25);}
 .BRD{background:rgba(255,82,82,0.1);color:#ff5252;border:1px solid rgba(255,82,82,0.3);padding:7px 14px;font-size:12px;border-radius:8px;cursor:pointer;}
 .BRD:hover{background:rgba(255,82,82,0.2);}
-.BCY{background:rgba(88,166,255,0.1);color:var(--blu);border:1px solid rgba(88,166,255,0.3);padding:7px 14px;font-size:12px;border-radius:8px;cursor:pointer;font-family:monospace;}
+.BCY{background:rgba(88,166,255,0.1);color:var(--blu);border:1px solid rgba(88,166,255,0.3);padding:6px 12px;font-size:11px;border-radius:6px;cursor:pointer;}
 .BCY:hover{background:rgba(88,166,255,0.2);}
 .AL{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;}
 .AL.show{display:block;}
@@ -69,15 +69,13 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .BDG{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;}
 .BDG.lead{background:rgba(88,166,255,0.15);color:var(--blu);}
 .BDG.purchased{background:rgba(63,185,80,0.15);color:var(--grn);}
-.BDG.active{background:rgba(63,185,80,0.15);color:var(--grn);}
-.BDG.inactive{background:rgba(136,136,136,0.15);color:var(--mut);}
 .result-box{background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:20px;margin-top:16px;display:none;}
 .result-box.show{display:block;}
-.result-phone{font-size:20px;font-weight:700;font-family:monospace;color:var(--txt);margin-bottom:4px;}
+.result-phone{font-size:20px;font-weight:700;font-family:monospace;margin-bottom:4px;}
 .result-meta{font-size:12px;color:var(--mut);margin-bottom:16px;}
 .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
 .rfield label{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:3px;}
-.rfield span{font-size:13px;font-family:monospace;color:var(--txt);}
+.rfield span{font-size:13px;font-family:monospace;}
 .purchase-row{display:flex;gap:12px;align-items:flex-end;padding-top:16px;border-top:1px solid var(--bor);}
 .val-input{width:130px;background:var(--sur);border:1px solid var(--bor);border-radius:8px;padding:10px 14px;color:var(--txt);font-size:15px;font-weight:700;text-align:center;outline:none;}
 .val-input:focus{border-color:var(--grn);}
@@ -90,12 +88,17 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .CB{position:absolute;top:10px;right:10px;background:var(--sur);border:1px solid var(--bor);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--mut);}
 .CB:hover{color:var(--red);border-color:var(--red);}
 /* Número card */
-.num-card{background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.num-card{background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;}
+.num-check{width:18px;height:18px;cursor:pointer;accent-color:var(--red);flex-shrink:0;}
 .num-info{flex:1;}
-.num-label{font-size:13px;font-weight:600;color:var(--txt);margin-bottom:2px;}
+.num-label{font-size:13px;font-weight:600;color:var(--txt);}
 .num-number{font-family:monospace;font-size:12px;color:var(--mut);}
-.num-link{font-family:monospace;font-size:11px;color:var(--blu);background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.2);border-radius:6px;padding:4px 10px;margin-top:6px;display:inline-block;word-break:break-all;}
-.num-actions{display:flex;gap:8px;flex-shrink:0;}
+.num-actions{display:flex;gap:6px;flex-shrink:0;}
+/* Link gerado */
+.link-box{background:rgba(88,166,255,0.06);border:1px solid rgba(88,166,255,0.2);border-radius:10px;padding:16px;margin-top:16px;display:none;}
+.link-box.show{display:block;}
+.link-url{font-family:monospace;font-size:11px;color:var(--blu);word-break:break-all;background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:10px 12px;margin:10px 0;}
+.link-info{font-size:12px;color:var(--mut);margin-top:6px;}
 </style>
 </head>
 <body>
@@ -198,8 +201,9 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
     <!-- NÚMEROS -->
     <div id="page-numeros" class="PG">
-      <div class="PH"><h2>Números WhatsApp</h2><p>Cadastre os números dos seus closers e gere os links para a pretzel</p></div>
+      <div class="PH"><h2>Números WhatsApp</h2><p>Cadastre até 20 números e gere links com randomização automática</p></div>
 
+      <!-- Adicionar -->
       <div class="CD">
         <div class="CDT">➕ Adicionar número</div>
         <div class="FR" style="margin-bottom:12px">
@@ -208,7 +212,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
             <input type="text" id="num-label" placeholder="Ex: Closer Bruno, Chip 1"/>
           </div>
           <div class="FG" style="margin:0">
-            <label>Número (com DDD e DDI)</label>
+            <label>Número com DDI e DDD</label>
             <input type="text" id="num-number" placeholder="Ex: 5562981585394" onkeydown="if(event.key==='Enter')addNumber()"/>
           </div>
         </div>
@@ -217,18 +221,45 @@ tr:hover td{background:rgba(255,255,255,0.02);}
         <div class="AL AE" id="num-error" style="margin-top:12px"></div>
       </div>
 
+      <!-- Lista + Gerador -->
       <div class="CD">
-        <div class="CDT">📱 Números cadastrados</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="CDT" style="margin:0">📱 Números cadastrados</div>
+          <div style="display:flex;gap:8px">
+            <button class="BCY" onclick="selecionarTodos()">Selecionar todos</button>
+            <button class="BCY" onclick="deselecionarTodos()">Limpar seleção</button>
+          </div>
+        </div>
         <div id="numbers-list"><p style="color:var(--mut);font-size:13px">Carregando...</p></div>
+
+        <!-- Gerador de link -->
+        <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--bor)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div>
+              <div style="font-size:14px;font-weight:600;margin-bottom:2px">🔗 Gerar link</div>
+              <div style="font-size:12px;color:var(--mut)">Marque os números desejados e clique em gerar</div>
+            </div>
+            <button class="BT BG BSM" onclick="gerarLink()" style="width:auto">Gerar link</button>
+          </div>
+
+          <div class="link-box" id="link-box">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px" id="link-titulo">—</div>
+            <div class="link-url" id="link-url">—</div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="BCY" onclick="copiarLink()">📋 Copiar link</button>
+            </div>
+            <div class="link-info" id="link-info">—</div>
+          </div>
+        </div>
       </div>
 
       <div class="CD" style="background:rgba(88,166,255,0.04);border-color:rgba(88,166,255,0.15)">
-        <div class="CDT" style="color:var(--blu)">💡 Como usar os links</div>
+        <div class="CDT" style="color:var(--blu)">💡 Como funciona a randomização</div>
         <p style="font-size:13px;color:var(--mut);line-height:1.8">
-          Cada número tem um link gerado automaticamente.<br>
-          Cole esse link no <strong>botão do Elementor</strong> da sua pretzel.<br>
-          Se rodar com 3 números, cria 3 botões — cada um com o link do seu número.<br>
-          O sistema vai capturar o click ID do Kwai e registrar qual número atendeu.
+          Quando você seleciona múltiplos números e gera o link, <strong>um único link</strong> é gerado.<br>
+          Cada lead que clicar será direcionado aleatoriamente para um dos números selecionados.<br>
+          O sistema registra qual número recebeu cada lead — visível na aba Leads.<br>
+          <strong>Limite:</strong> até 20 números cadastrados.
         </p>
       </div>
     </div>
@@ -254,10 +285,9 @@ tr:hover td{background:rgba(255,255,255,0.02);}
     <!-- SETUP -->
     <div id="page-setup" class="PG">
       <div class="PH"><h2>Setup</h2><p>Instruções de integração</p></div>
-
       <div class="CD">
-        <div class="CDT">1. Script para a pretzel</div>
-        <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Cole no &lt;head&gt; da pretzel. Ele captura o click ID do Kwai automaticamente:</p>
+        <div class="CDT">1. Script para o &lt;head&gt; da pretzel</div>
+        <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Captura o click ID do Kwai automaticamente e atualiza os links:</p>
         <div class="WB" id="code-pretzel">
           <button class="CB" onclick="copiar('code-pretzel')">Copiar</button>
 &lt;script&gt;
@@ -274,9 +304,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
     var id=gc('kwai_cid')||(function(){try{return localStorage.getItem('kwai_cid')}catch(x){return null}})();
     if(id){
       document.querySelectorAll('a[href*="capi-track-production.up.railway.app/kwai/ir"]').forEach(function(a){
-        var url=new URL(a.href);
-        url.searchParams.set('cid',id);
-        a.href=url.toString();
+        var url=new URL(a.href);url.searchParams.set('cid',id);a.href=url.toString();
       });
     }
   });
@@ -284,17 +312,14 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 &lt;/script&gt;
         </div>
       </div>
-
       <div class="CD">
         <div class="CDT">2. Link do botão</div>
-        <p style="font-size:13px;color:var(--mut);margin-bottom:8px">Vá em <strong>Números WhatsApp</strong> e copie o link gerado para cada número. Cole no botão do Elementor.</p>
+        <p style="font-size:13px;color:var(--mut)">Vá em <strong>Números WhatsApp</strong>, selecione os números e clique em <strong>Gerar link</strong>. Cole o link gerado no botão do Elementor.</p>
       </div>
-
       <div class="CD">
         <div class="CDT">3. Pixels configurados</div>
         <div class="WB" style="color:var(--grn)">Pixel 1: 304883249383318
 Pixel 2: 308803017463304
-
 Evento: PURCHASE | Produto: Glivia | Moeda: BRL</div>
       </div>
     </div>
@@ -306,43 +331,44 @@ Evento: PURCHASE | Produto: Glivia | Moeda: BRL</div>
 var authToken = localStorage.getItem('kwai_auth') || '';
 var currentLead = null;
 var currentFilter = '';
+var allNumbers = [];
 var BASE = 'https://capi-track-production.up.railway.app';
 
 function doLogin() {
   var pw = document.getElementById('login-password').value;
   if (!pw) return;
-  fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) })
+  fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})})
     .then(function(r){return r.json();}).then(function(d){
-      if (d.token) { authToken=d.token; localStorage.setItem('kwai_auth',authToken); initApp(); }
-      else { var el=document.getElementById('login-error'); el.textContent='Senha incorreta'; el.classList.add('show'); }
-    }).catch(function(){ initApp(); });
+      if(d.token){authToken=d.token;localStorage.setItem('kwai_auth',authToken);initApp();}
+      else{var el=document.getElementById('login-error');el.textContent='Senha incorreta';el.classList.add('show');}
+    }).catch(function(){initApp();});
 }
 
-function initApp() {
+function initApp(){
   document.getElementById('LS').style.display='none';
   document.getElementById('APP').style.display='block';
   loadStats();
 }
 
-function api(method, url, body) {
-  var opts = { method:method, headers:{'x-auth-token':authToken} };
-  if (body) { opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(body); }
-  return fetch(url, opts).then(function(r){return r.json();});
+function api(method,url,body){
+  var opts={method:method,headers:{'x-auth-token':authToken}};
+  if(body){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
+  return fetch(url,opts).then(function(r){return r.json();});
 }
 
-function showPage(name, el) {
+function showPage(name,el){
   document.querySelectorAll('.PG').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.NI').forEach(function(n){n.classList.remove('active');});
   document.getElementById('page-'+name).classList.add('active');
-  if (el) el.classList.add('active');
-  if (name==='dashboard') loadStats();
-  if (name==='leads') loadLeads(currentFilter);
-  if (name==='numeros') loadNumbers();
+  if(el)el.classList.add('active');
+  if(name==='dashboard')loadStats();
+  if(name==='leads')loadLeads(currentFilter);
+  if(name==='numeros')loadNumbers();
 }
 
-function loadStats() {
+function loadStats(){
   api('GET','/api/kwai/stats').then(function(d){
-    if (!d) return;
+    if(!d)return;
     document.getElementById('sk-leads-hoje').textContent=d.leads_hoje;
     document.getElementById('sk-vendas-hoje').textContent=d.vendas_hoje;
     document.getElementById('sk-total').textContent=d.total_leads;
@@ -351,11 +377,11 @@ function loadStats() {
   });
 }
 
-function loadDashLeads() {
+function loadDashLeads(){
   api('GET','/api/kwai/leads?limit=10').then(function(d){
-    if (!d) return;
+    if(!d)return;
     var tb=document.getElementById('dash-tbody');
-    if (!d.leads||!d.leads.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead ainda. Configure o script na pretzel.</td></tr>';return;}
+    if(!d.leads||!d.leads.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead ainda.</td></tr>';return;}
     tb.innerHTML=d.leads.map(function(l){
       return '<tr>'+
         '<td style="font-family:monospace;font-size:11px;color:var(--mut)">'+(l.click_id?l.click_id.substring(0,16)+'...':'—')+'</td>'+
@@ -370,39 +396,106 @@ function loadDashLeads() {
 }
 
 // ── NÚMEROS ───────────────────────────────────────────────
-function loadNumbers() {
+function loadNumbers(){
   api('GET','/api/kwai/numbers').then(function(d){
-    if (!d) return;
+    if(!d)return;
+    allNumbers=d.numbers||[];
     var el=document.getElementById('numbers-list');
-    if (!d.numbers||!d.numbers.length){
-      el.innerHTML='<p style="color:var(--mut);font-size:13px">Nenhum número cadastrado ainda.</p>';
+    if(!allNumbers.length){
+      el.innerHTML='<p style="color:var(--mut);font-size:13px">Nenhum número cadastrado. Adicione acima.</p>';
       return;
     }
-    el.innerHTML=d.numbers.map(function(n){
-      var link=BASE+'/kwai/ir?phone='+n.number+'&campaign_id=glivia';
-      return '<div class="num-card">'+
+    el.innerHTML=allNumbers.map(function(n){
+      return '<div class="num-card" id="num-card-'+n.id+'">'+
+        '<input type="checkbox" class="num-check" id="chk-'+n.id+'" value="'+n.number+'" onchange="atualizarContador()"/>'+
         '<div class="num-info">'+
           '<div class="num-label">'+n.label+'</div>'+
           '<div class="num-number">+'+n.number+'</div>'+
-          '<div class="num-link">'+link+'</div>'+
         '</div>'+
         '<div class="num-actions">'+
-          '<button class="BCY" onclick="copiarTexto(\''+link+'\', this)">📋 Copiar link</button>'+
-          '<button class="BRD" onclick="deleteNumber('+n.id+')">✕</button>'+
+          '<button class="BRD" onclick="deleteNumber('+n.id+')">✕ Remover</button>'+
         '</div>'+
       '</div>';
     }).join('');
+    atualizarContador();
+    // Esconde o link ao recarregar
+    document.getElementById('link-box').classList.remove('show');
   });
 }
 
-function addNumber() {
-  var label  = document.getElementById('num-label').value.trim();
-  var number = document.getElementById('num-number').value.trim().replace(/\D/g,'');
-  if (!number) { showAlert('num-error','Digite o número'); return; }
-  if (number.length < 10) { showAlert('num-error','Número inválido. Inclua DDI e DDD. Ex: 5562981585394'); return; }
+function atualizarContador(){
+  var selecionados=getSelecionados();
+  // apenas feedback visual futuro
+}
+
+function getSelecionados(){
+  var checked=[];
+  allNumbers.forEach(function(n){
+    var chk=document.getElementById('chk-'+n.id);
+    if(chk&&chk.checked)checked.push(n.number);
+  });
+  return checked;
+}
+
+function selecionarTodos(){
+  allNumbers.forEach(function(n){
+    var chk=document.getElementById('chk-'+n.id);
+    if(chk)chk.checked=true;
+  });
+}
+
+function deselecionarTodos(){
+  allNumbers.forEach(function(n){
+    var chk=document.getElementById('chk-'+n.id);
+    if(chk)chk.checked=false;
+  });
+  document.getElementById('link-box').classList.remove('show');
+}
+
+function gerarLink(){
+  var selecionados=getSelecionados();
+  if(!selecionados.length){alert('Selecione pelo menos um número.');return;}
+
+  var box=document.getElementById('link-box');
+  var urlEl=document.getElementById('link-url');
+  var tituloEl=document.getElementById('link-titulo');
+  var infoEl=document.getElementById('link-info');
+
+  var link='';
+  if(selecionados.length===1){
+    // número único
+    link=BASE+'/kwai/ir?phone='+selecionados[0]+'&campaign_id=glivia';
+    tituloEl.textContent='Link único — '+selecionados[0];
+    infoEl.textContent='Todos os leads vão para este número.';
+  } else {
+    // múltiplos — randomização
+    link=BASE+'/kwai/ir?phones='+selecionados.join(',')+'&campaign_id=glivia';
+    tituloEl.textContent='Link com randomização — '+selecionados.length+' números';
+    infoEl.textContent='Cada lead será direcionado aleatoriamente para um dos '+selecionados.length+' números selecionados.';
+  }
+
+  urlEl.textContent=link;
+  box.classList.add('show');
+}
+
+function copiarLink(){
+  var text=document.getElementById('link-url').textContent;
+  navigator.clipboard.writeText(text).then(function(){
+    var btn=event.target;
+    btn.textContent='✓ Copiado!';
+    setTimeout(function(){btn.textContent='📋 Copiar link';},2000);
+  });
+}
+
+function addNumber(){
+  var label=document.getElementById('num-label').value.trim();
+  var number=document.getElementById('num-number').value.trim().replace(/\D/g,'');
+  if(!number){showAlert('num-error','Digite o número');return;}
+  if(number.length<10){showAlert('num-error','Número inválido. Inclua DDI e DDD. Ex: 5562981585394');return;}
+  if(allNumbers.length>=20){showAlert('num-error','Limite de 20 números atingido');return;}
   hideAlert('num-error');
-  api('POST','/api/kwai/numbers',{label:label||number, number:number}).then(function(d){
-    if (d&&d.ok) {
+  api('POST','/api/kwai/numbers',{label:label||number,number:number}).then(function(d){
+    if(d&&d.ok){
       showAlert('num-success','✅ Número adicionado!');
       document.getElementById('num-label').value='';
       document.getElementById('num-number').value='';
@@ -413,34 +506,26 @@ function addNumber() {
   });
 }
 
-function deleteNumber(id) {
-  if (!confirm('Remover este número?')) return;
+function deleteNumber(id){
+  if(!confirm('Remover este número?'))return;
   api('DELETE','/api/kwai/numbers/'+id).then(function(d){
-    if (d&&d.ok) loadNumbers();
-  });
-}
-
-function copiarTexto(text, btn) {
-  navigator.clipboard.writeText(text).then(function(){
-    var orig=btn.textContent;
-    btn.textContent='✓ Copiado!';
-    setTimeout(function(){btn.textContent=orig;},2000);
+    if(d&&d.ok)loadNumbers();
   });
 }
 
 // ── BUSCAR / DISPARAR ─────────────────────────────────────
-function buscarLead() {
+function buscarLead(){
   var phone=document.getElementById('search-phone').value.trim();
-  if (!phone) return;
+  if(!phone)return;
   document.getElementById('result-box').classList.remove('show');
   document.getElementById('multi-results').style.display='none';
   api('GET','/api/kwai/lead/'+encodeURIComponent(phone)).then(function(d){
-    if (!d||!d.leads.length){alert('Nenhum lead encontrado');return;}
-    if (d.leads.length===1){mostrarLead(d.leads[0]);}else{mostrarMultiplos(d.leads);}
+    if(!d||!d.leads.length){alert('Nenhum lead encontrado');return;}
+    if(d.leads.length===1){mostrarLead(d.leads[0]);}else{mostrarMultiplos(d.leads);}
   });
 }
 
-function mostrarLead(lead) {
+function mostrarLead(lead){
   currentLead=lead;
   document.getElementById('r-phone').textContent=lead.phone?fmtPhone(lead.phone):'(sem número)';
   document.getElementById('r-meta').textContent='ID #'+lead.id+' — '+fmtDate(lead.created_at);
@@ -452,14 +537,14 @@ function mostrarLead(lead) {
   badge.className='BDG '+lead.status;
   badge.textContent=lead.status==='purchased'?'✓ Venda realizada':'● Lead ativo';
   var btn=document.getElementById('btn-purchase');
-  if (lead.status==='purchased'){btn.disabled=true;btn.textContent='✓ Purchase já disparado';}
+  if(lead.status==='purchased'){btn.disabled=true;btn.textContent='✓ Purchase já disparado';}
   else{btn.disabled=false;btn.textContent='⚡ Disparar Purchase nos 2 Pixels';}
   hideAlert('purchase-success');hideAlert('purchase-error');
   document.getElementById('result-box').classList.add('show');
   document.getElementById('multi-results').style.display='none';
 }
 
-function mostrarMultiplos(leads) {
+function mostrarMultiplos(leads){
   var list=document.getElementById('multi-list');
   list.innerHTML=leads.map(function(l){
     return '<div class="multi-item" onclick=\'mostrarLead('+JSON.stringify(l).replace(/'/g,"&#39;")+')\'>'+
@@ -471,40 +556,39 @@ function mostrarMultiplos(leads) {
   document.getElementById('multi-results').style.display='block';
 }
 
-function dispararPurchase() {
-  if (!currentLead) return;
+function dispararPurchase(){
+  if(!currentLead)return;
   var value=parseFloat(document.getElementById('purchase-value').value)||297;
   var btn=document.getElementById('btn-purchase');
-  btn.disabled=true; btn.textContent='Disparando...';
+  btn.disabled=true;btn.textContent='Disparando...';
   api('POST','/api/kwai/purchase',{lead_id:currentLead.id,value:value}).then(function(d){
-    if (d&&d.success){
+    if(d&&d.success){
       showAlert('purchase-success','✅ Purchase de R$ '+value.toFixed(2)+' disparado nos 2 pixels!');
       btn.textContent='✓ Disparado!';
       document.getElementById('r-status-badge').className='BDG purchased';
       document.getElementById('r-status-badge').textContent='✓ Venda realizada';
       loadStats();
     } else {
-      btn.disabled=false; btn.textContent='⚡ Disparar Purchase nos 2 Pixels';
+      btn.disabled=false;btn.textContent='⚡ Disparar Purchase nos 2 Pixels';
       showAlert('purchase-error','Erro: '+((d&&d.error)||'Falha'));
     }
   });
 }
 
-function quickPurchase(id) {
-  if (!confirm('Disparar Purchase para lead #'+id+'?')) return;
+function quickPurchase(id){
+  if(!confirm('Disparar Purchase para lead #'+id+'?'))return;
   api('POST','/api/kwai/purchase',{lead_id:id,value:297}).then(function(d){
-    if (d&&d.success){alert('✅ Purchase disparado!');loadStats();}
+    if(d&&d.success){alert('✅ Purchase disparado!');loadStats();}
     else alert('Erro: '+((d&&d.error)||'Falha'));
   });
 }
 
-// ── LEADS TABLE ───────────────────────────────────────────
-function loadLeads(status) {
+function loadLeads(status){
   currentFilter=status;
   var tb=document.getElementById('leads-tbody');
   tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--mut);padding:30px">Carregando...</td></tr>';
   api('GET','/api/kwai/leads?limit=100'+(status?'&status='+status:'')).then(function(d){
-    if (!d||!d.leads.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead</td></tr>';return;}
+    if(!d||!d.leads.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead</td></tr>';return;}
     tb.innerHTML=d.leads.map(function(l){
       return '<tr>'+
         '<td style="color:var(--mut)">#'+l.id+'</td>'+
@@ -543,7 +627,7 @@ function copiar(id){
   });
 }
 
-if (authToken) initApp();
+if(authToken)initApp();
 </script>
 </body>
 </html>
