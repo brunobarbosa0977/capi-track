@@ -5,21 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Kwai Tracker — Infinity Track</title>
 <style>
-:root{--bg:#0a0a0a;--sur:#111;--sur2:#1a1a1a;--bor:#2a2a2a;--txt:#fff;--mut:#888;--red:#cc0000;--red2:#ff4444;--blu:#58a6ff;--pur:#bc8cff;--yel:#d29922;--grn:#3fb950;--grn2:rgba(63,185,80,0.15);}
+:root{--bg:#0a0a0a;--sur:#111;--sur2:#1a1a1a;--bor:#2a2a2a;--txt:#fff;--mut:#888;--red:#cc0000;--red2:#ff4444;--blu:#58a6ff;--grn:#3fb950;--grn2:rgba(63,185,80,0.15);--yel:#d29922;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;}
 body::before{content:"";position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#c00,#f00,#c00);z-index:9999;}
-
-/* LOGIN */
 #LS{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at center,#1a0000 0%,#0a0a0a 70%);}
 .LB{background:var(--sur);border:1px solid #c00044;border-radius:16px;padding:48px 40px;width:100%;max-width:420px;text-align:center;box-shadow:0 0 60px #c00033;}
-.LS-p{color:var(--mut);font-size:12px;letter-spacing:1px;text-transform:uppercase;margin-bottom:32px;}
 #APP{display:none;}
-
-/* LAYOUT */
 .SB{position:fixed;top:0;left:0;width:230px;height:100vh;background:var(--sur);border-right:1px solid var(--bor);display:flex;flex-direction:column;z-index:100;}
 .SL{padding:24px 20px;border-bottom:1px solid var(--bor);background:linear-gradient(135deg,#1a0000,#0a0a0a);}
-.SL-title{font-size:16px;font-weight:700;color:var(--txt);}
+.SL-title{font-size:16px;font-weight:700;}
 .SL-sub{font-size:9px;color:var(--mut);letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
 .SN{padding:16px 0 8px;flex:1;}
 .SNL{font-size:10px;color:var(--mut);letter-spacing:1px;text-transform:uppercase;padding:0 20px;margin-bottom:4px;}
@@ -32,16 +27,12 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:3px;backgroun
 .PH{margin-bottom:28px;}
 .PH h2{font-size:24px;font-weight:700;margin-bottom:4px;}
 .PH p{color:var(--mut);font-size:13px;}
-
-/* CARDS */
 .CR{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
 .SC{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:20px;position:relative;overflow:hidden;}
 .SC::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),transparent);}
 .SL2{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;}
 .SV{font-size:30px;font-weight:700;}
 .SS{font-size:12px;color:var(--mut);margin-top:6px;}
-
-/* FORM */
 .CD{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:22px;margin-bottom:20px;}
 .CDT{font-weight:600;font-size:14px;margin-bottom:16px;}
 label{display:block;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;font-weight:500;}
@@ -50,8 +41,6 @@ input:focus{border-color:var(--red);}
 input::placeholder{color:#555;}
 .FG{margin-bottom:16px;}
 .FR{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-
-/* BUTTONS */
 .BT{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;transition:all 0.15s;}
 .BP{background:linear-gradient(135deg,#c00,#900);color:#fff;width:100%;}
 .BP:hover{background:linear-gradient(135deg,#d11,#a00);}
@@ -61,29 +50,27 @@ input::placeholder{color:#555;}
 .BS{background:var(--sur2);color:var(--txt);border:1px solid var(--bor);}
 .BS:hover{border-color:var(--red);color:var(--red);}
 .BSM{padding:7px 14px;font-size:12px;}
-.BT:disabled{opacity:0.4;cursor:not-allowed;}
-.BGS{background:rgba(63,185,80,0.15);color:var(--grn);border:1px solid rgba(63,185,80,0.3);padding:7px 14px;font-size:12px;}
+.BGS{background:rgba(63,185,80,0.15);color:var(--grn);border:1px solid rgba(63,185,80,0.3);padding:7px 14px;font-size:12px;border-radius:8px;cursor:pointer;}
 .BGS:hover{background:rgba(63,185,80,0.25);}
-
-/* ALERTS */
+.BRD{background:rgba(255,82,82,0.1);color:#ff5252;border:1px solid rgba(255,82,82,0.3);padding:7px 14px;font-size:12px;border-radius:8px;cursor:pointer;}
+.BRD:hover{background:rgba(255,82,82,0.2);}
+.BCY{background:rgba(88,166,255,0.1);color:var(--blu);border:1px solid rgba(88,166,255,0.3);padding:7px 14px;font-size:12px;border-radius:8px;cursor:pointer;font-family:monospace;}
+.BCY:hover{background:rgba(88,166,255,0.2);}
 .AL{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;}
 .AL.show{display:block;}
 .AS{background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);color:var(--grn);}
 .AE{background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:var(--red2);}
-.AI{background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);color:var(--blu);}
-
-/* TABELA */
 .TW{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 th{text-align:left;padding:10px 14px;color:var(--mut);font-weight:500;font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--bor);}
-td{padding:10px 14px;border-bottom:1px solid var(--bor);}
+td{padding:10px 14px;border-bottom:1px solid var(--bor);vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:rgba(255,255,255,0.02);}
 .BDG{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;}
 .BDG.lead{background:rgba(88,166,255,0.15);color:var(--blu);}
 .BDG.purchased{background:rgba(63,185,80,0.15);color:var(--grn);}
-
-/* RESULTADO BUSCA */
+.BDG.active{background:rgba(63,185,80,0.15);color:var(--grn);}
+.BDG.inactive{background:rgba(136,136,136,0.15);color:var(--mut);}
 .result-box{background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:20px;margin-top:16px;display:none;}
 .result-box.show{display:block;}
 .result-phone{font-size:20px;font-weight:700;font-family:monospace;color:var(--txt);margin-bottom:4px;}
@@ -94,43 +81,38 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .purchase-row{display:flex;gap:12px;align-items:flex-end;padding-top:16px;border-top:1px solid var(--bor);}
 .val-input{width:130px;background:var(--sur);border:1px solid var(--bor);border-radius:8px;padding:10px 14px;color:var(--txt);font-size:15px;font-weight:700;text-align:center;outline:none;}
 .val-input:focus{border-color:var(--grn);}
-.multi-list{margin-top:12px;}
 .multi-item{background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:14px 16px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color 0.15s;}
 .multi-item:hover{border-color:rgba(255,255,255,0.15);}
-
-/* FILTER TABS */
 .TB{display:flex;gap:2px;margin-bottom:16px;background:var(--sur2);border-radius:10px;padding:4px;width:fit-content;}
 .TT{padding:7px 18px;border-radius:7px;cursor:pointer;font-size:12px;color:var(--mut);transition:all 0.15s;}
 .TT.active{background:var(--sur);color:var(--txt);}
-
-/* CODE BLOCK */
 .WB{background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:14px 16px;font-family:monospace;font-size:12px;color:var(--red);word-break:break-all;margin-top:8px;position:relative;line-height:1.7;}
 .CB{position:absolute;top:10px;right:10px;background:var(--sur);border:1px solid var(--bor);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--mut);}
 .CB:hover{color:var(--red);border-color:var(--red);}
-
-/* BACK LINK */
-.back-link{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-size:13px;text-decoration:none;margin-bottom:24px;transition:color 0.15s;}
-.back-link:hover{color:var(--red);}
+/* Número card */
+.num-card{background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.num-info{flex:1;}
+.num-label{font-size:13px;font-weight:600;color:var(--txt);margin-bottom:2px;}
+.num-number{font-family:monospace;font-size:12px;color:var(--mut);}
+.num-link{font-family:monospace;font-size:11px;color:var(--blu);background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.2);border-radius:6px;padding:4px 10px;margin-top:6px;display:inline-block;word-break:break-all;}
+.num-actions{display:flex;gap:8px;flex-shrink:0;}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="LS">
   <div class="LB">
     <p style="font-size:22px;font-weight:700;margin-bottom:8px;">⚡ Kwai Tracker</p>
-    <p class="LS-p">Infinity Track — Módulo Kwai</p>
+    <p style="font-size:11px;color:var(--mut);letter-spacing:1px;text-transform:uppercase;margin-bottom:32px">Infinity Track — Módulo Kwai</p>
     <div class="AL AE" id="login-error"></div>
     <div class="FG" style="text-align:left">
       <label>Senha de acesso</label>
       <input type="password" id="login-password" placeholder="Mesma senha do Infinity Track" onkeydown="if(event.key==='Enter')doLogin()"/>
     </div>
     <button class="BT BP" onclick="doLogin()">Entrar</button>
-    <p style="font-size:11px;color:#444;margin-top:20px;">Use a mesma senha do Infinity Track</p>
   </div>
 </div>
 
-<!-- APP -->
 <div id="APP">
   <nav class="SB">
     <div class="SL">
@@ -139,25 +121,13 @@ tr:hover td{background:rgba(255,255,255,0.02);}
     </div>
     <div class="SN">
       <div class="SNL">Menu</div>
-      <div class="NI active" onclick="showPage('dashboard',this)">
-        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        Dashboard
-      </div>
-      <div class="NI" onclick="showPage('disparar',this)">
-        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        Disparar Purchase
-      </div>
-      <div class="NI" onclick="showPage('leads',this)">
-        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-        Leads
-      </div>
-      <div class="NI" onclick="showPage('setup',this)">
-        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        Setup
-      </div>
+      <div class="NI active" onclick="showPage('dashboard',this)">📊 Dashboard</div>
+      <div class="NI" onclick="showPage('disparar',this)">⚡ Disparar Purchase</div>
+      <div class="NI" onclick="showPage('numeros',this)">📱 Números WhatsApp</div>
+      <div class="NI" onclick="showPage('leads',this)">👥 Leads</div>
+      <div class="NI" onclick="showPage('setup',this)">⚙️ Setup</div>
     </div>
     <div class="SBT">
-      <small style="color:var(--mut);font-size:11px;display:block;margin-bottom:8px;">Infinity Track</small>
       <a href="/" style="display:block;text-align:center;font-size:12px;color:var(--mut);text-decoration:none;padding:6px;border:1px solid var(--bor);border-radius:6px;">← Voltar ao Meta</a>
     </div>
   </nav>
@@ -166,10 +136,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
     <!-- DASHBOARD -->
     <div id="page-dashboard" class="PG active">
-      <div class="PH">
-        <h2>Dashboard Kwai</h2>
-        <p>Leads capturados e purchases disparados</p>
-      </div>
+      <div class="PH"><h2>Dashboard Kwai</h2><p>Leads capturados e purchases disparados</p></div>
       <div class="CR">
         <div class="SC"><div class="SL2">Leads Hoje</div><div class="SV" style="color:var(--blu)" id="sk-leads-hoje">—</div><div class="SS">clicaram no WhatsApp</div></div>
         <div class="SC"><div class="SL2">Vendas Hoje</div><div class="SV" style="color:var(--grn)" id="sk-vendas-hoje">—</div><div class="SS">purchases disparados</div></div>
@@ -180,8 +147,8 @@ tr:hover td{background:rgba(255,255,255,0.02);}
         <div class="CDT">Últimos leads recebidos</div>
         <div class="TW">
           <table>
-            <thead><tr><th>Click ID</th><th>Campanha</th><th>Status</th><th>Horário</th><th>Ação</th></tr></thead>
-            <tbody id="dash-tbody"><tr><td colspan="5" style="text-align:center;color:var(--mut);padding:40px">Carregando...</td></tr></tbody>
+            <thead><tr><th>Click ID</th><th>Número</th><th>Campanha</th><th>Status</th><th>Horário</th><th>Ação</th></tr></thead>
+            <tbody id="dash-tbody"><tr><td colspan="6" style="text-align:center;color:var(--mut);padding:40px">Carregando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -189,19 +156,13 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
     <!-- DISPARAR -->
     <div id="page-disparar" class="PG">
-      <div class="PH">
-        <h2>Disparar Purchase</h2>
-        <p>Busque o número do cliente e dispare a conversão para o Kwai</p>
-      </div>
-
+      <div class="PH"><h2>Disparar Purchase</h2><p>Busque o número do cliente e dispare a conversão</p></div>
       <div class="CD">
         <div class="CDT">🔍 Buscar lead pelo número</div>
         <div style="display:flex;gap:10px;">
           <input type="text" id="search-phone" placeholder="Ex: 62999887766" style="flex:1" onkeydown="if(event.key==='Enter')buscarLead()"/>
           <button class="BT BS BSM" onclick="buscarLead()">Buscar</button>
         </div>
-
-        <!-- Resultado único -->
         <div class="result-box" id="result-box">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
             <div>
@@ -214,13 +175,13 @@ tr:hover td{background:rgba(255,255,255,0.02);}
             <div class="rfield"><label>Click ID Kwai</label><span id="r-clickid">—</span></div>
             <div class="rfield"><label>ID do Lead</label><span id="r-id">—</span></div>
             <div class="rfield"><label>Campanha</label><span id="r-campaign">—</span></div>
-            <div class="rfield"><label>Entrou em contato</label><span id="r-time">—</span></div>
+            <div class="rfield"><label>Número destino</label><span id="r-wpp">—</span></div>
           </div>
           <div class="AL AS" id="purchase-success"></div>
           <div class="AL AE" id="purchase-error"></div>
           <div class="purchase-row">
             <div>
-              <label style="margin-bottom:6px">Valor da venda (R$)</label>
+              <label style="margin-bottom:6px">Valor (R$)</label>
               <input type="number" class="val-input" id="purchase-value" value="297"/>
             </div>
             <button class="BT BG" id="btn-purchase" onclick="dispararPurchase()" style="flex:1">
@@ -228,18 +189,53 @@ tr:hover td{background:rgba(255,255,255,0.02);}
             </button>
           </div>
         </div>
-
-        <!-- Múltiplos resultados -->
         <div id="multi-results" style="display:none;margin-top:12px">
-          <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Vários leads encontrados. Selecione o correto:</p>
+          <p style="font-size:13px;color:var(--mut);margin-bottom:10px">Vários leads encontrados. Selecione:</p>
           <div id="multi-list"></div>
         </div>
       </div>
     </div>
 
+    <!-- NÚMEROS -->
+    <div id="page-numeros" class="PG">
+      <div class="PH"><h2>Números WhatsApp</h2><p>Cadastre os números dos seus closers e gere os links para a pretzel</p></div>
+
+      <div class="CD">
+        <div class="CDT">➕ Adicionar número</div>
+        <div class="FR" style="margin-bottom:12px">
+          <div class="FG" style="margin:0">
+            <label>Nome / Identificação</label>
+            <input type="text" id="num-label" placeholder="Ex: Closer Bruno, Chip 1"/>
+          </div>
+          <div class="FG" style="margin:0">
+            <label>Número (com DDD e DDI)</label>
+            <input type="text" id="num-number" placeholder="Ex: 5562981585394" onkeydown="if(event.key==='Enter')addNumber()"/>
+          </div>
+        </div>
+        <button class="BT BG BSM" onclick="addNumber()" style="width:auto">Adicionar número</button>
+        <div class="AL AS" id="num-success" style="margin-top:12px"></div>
+        <div class="AL AE" id="num-error" style="margin-top:12px"></div>
+      </div>
+
+      <div class="CD">
+        <div class="CDT">📱 Números cadastrados</div>
+        <div id="numbers-list"><p style="color:var(--mut);font-size:13px">Carregando...</p></div>
+      </div>
+
+      <div class="CD" style="background:rgba(88,166,255,0.04);border-color:rgba(88,166,255,0.15)">
+        <div class="CDT" style="color:var(--blu)">💡 Como usar os links</div>
+        <p style="font-size:13px;color:var(--mut);line-height:1.8">
+          Cada número tem um link gerado automaticamente.<br>
+          Cole esse link no <strong>botão do Elementor</strong> da sua pretzel.<br>
+          Se rodar com 3 números, cria 3 botões — cada um com o link do seu número.<br>
+          O sistema vai capturar o click ID do Kwai e registrar qual número atendeu.
+        </p>
+      </div>
+    </div>
+
     <!-- LEADS -->
     <div id="page-leads" class="PG">
-      <div class="PH"><h2>Todos os Leads</h2><p>Histórico completo de leads Kwai</p></div>
+      <div class="PH"><h2>Todos os Leads</h2><p>Histórico completo</p></div>
       <div class="TB">
         <div class="TT active" onclick="filtrar(this,'')">Todos</div>
         <div class="TT" onclick="filtrar(this,'lead')">Leads</div>
@@ -248,8 +244,8 @@ tr:hover td{background:rgba(255,255,255,0.02);}
       <div class="CD" style="padding:0">
         <div class="TW">
           <table>
-            <thead><tr><th>ID</th><th>Telefone</th><th>Click ID</th><th>Status</th><th>Valor</th><th>Data</th><th>Ação</th></tr></thead>
-            <tbody id="leads-tbody"><tr><td colspan="7" style="text-align:center;color:var(--mut);padding:40px">Carregando...</td></tr></tbody>
+            <thead><tr><th>ID</th><th>Telefone</th><th>Click ID</th><th>Número</th><th>Status</th><th>Valor</th><th>Data</th><th>Ação</th></tr></thead>
+            <tbody id="leads-tbody"><tr><td colspan="8" style="text-align:center;color:var(--mut);padding:40px">Carregando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -257,15 +253,15 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 
     <!-- SETUP -->
     <div id="page-setup" class="PG">
-      <div class="PH"><h2>Setup</h2><p>Como integrar na pretzel e usar o sistema</p></div>
+      <div class="PH"><h2>Setup</h2><p>Instruções de integração</p></div>
 
       <div class="CD">
-        <div class="CDT">1. Script para a pretzel (WordPress)</div>
-        <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Cole no &lt;head&gt; da pretzel via Insert Headers and Footers ou Elementor HTML:</p>
+        <div class="CDT">1. Script para a pretzel</div>
+        <p style="font-size:13px;color:var(--mut);margin-bottom:12px">Cole no &lt;head&gt; da pretzel. Ele captura o click ID do Kwai automaticamente:</p>
         <div class="WB" id="code-pretzel">
           <button class="CB" onclick="copiar('code-pretzel')">Copiar</button>
 &lt;script&gt;
-(function() {
+(function(){
   function gp(n){var r=new RegExp('[?&]'+n+'=([^&#]*)').exec(location.href);return r?decodeURIComponent(r[1]):null;}
   var cid=gp('clickid')||gp('kwai_click_id')||gp('kpf')||gp('click_id');
   if(cid){
@@ -276,47 +272,30 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   document.addEventListener('DOMContentLoaded',function(){
     function gc(n){var m=document.cookie.match(new RegExp('(^| )'+n+'=([^;]+)'));return m?m[2]:null;}
     var id=gc('kwai_cid')||(function(){try{return localStorage.getItem('kwai_cid')}catch(x){return null}})();
-    document.querySelectorAll('a[href*="wa.me"],a[href*="whatsapp.com"]').forEach(function(a){
-      a.href='SEU_DOMINIO_RAILWAY/kwai/ir?cid='+(id||'')+'&campaign_id=glivia';
-    });
+    if(id){
+      document.querySelectorAll('a[href*="capi-track-production.up.railway.app/kwai/ir"]').forEach(function(a){
+        var url=new URL(a.href);
+        url.searchParams.set('cid',id);
+        a.href=url.toString();
+      });
+    }
   });
 })();
 &lt;/script&gt;
         </div>
-        <p style="font-size:12px;color:var(--yel);margin-top:10px">⚠️ Substitua <strong>SEU_DOMINIO_RAILWAY</strong> pela URL do Railway onde o Infinity Track está rodando.</p>
       </div>
 
       <div class="CD">
-        <div class="CDT">2. Como usar o closer</div>
-        <p style="font-size:13px;color:var(--mut);line-height:1.8">
-          Quando fechar uma venda no WhatsApp:<br>
-          1. Abra esta página<br>
-          2. Vá em <strong>Disparar Purchase</strong><br>
-          3. Digite o número do cliente (ex: 6299988776)<br>
-          4. Confira o lead e o valor<br>
-          5. Clique em <strong>⚡ Disparar Purchase</strong><br>
-          O evento vai direto para os 2 pixels do Kwai.
-        </p>
+        <div class="CDT">2. Link do botão</div>
+        <p style="font-size:13px;color:var(--mut);margin-bottom:8px">Vá em <strong>Números WhatsApp</strong> e copie o link gerado para cada número. Cole no botão do Elementor.</p>
       </div>
 
       <div class="CD">
         <div class="CDT">3. Pixels configurados</div>
-        <div class="WB" style="color:var(--grn)">
-Pixel 1: 304883249383318
+        <div class="WB" style="color:var(--grn)">Pixel 1: 304883249383318
 Pixel 2: 308803017463304
 
-Evento disparado: PURCHASE
-Produto: Glivia | Moeda: BRL
-        </div>
-      </div>
-
-      <div class="CD">
-        <div class="CDT">4. URL de acesso rápido</div>
-        <p style="font-size:13px;color:var(--mut);margin-bottom:8px">Salve no celular do closer:</p>
-        <div class="WB" id="code-url">
-          <button class="CB" onclick="copiar('code-url')">Copiar</button>
-          SEU_DOMINIO_RAILWAY/kwai.html
-        </div>
+Evento: PURCHASE | Produto: Glivia | Moeda: BRL</div>
       </div>
     </div>
 
@@ -327,237 +306,240 @@ Produto: Glivia | Moeda: BRL
 var authToken = localStorage.getItem('kwai_auth') || '';
 var currentLead = null;
 var currentFilter = '';
+var BASE = 'https://capi-track-production.up.railway.app';
 
-// ── AUTH ──────────────────────────────────────────────────
 function doLogin() {
   var pw = document.getElementById('login-password').value;
   if (!pw) return;
-  // Usa o mesmo endpoint de auth do Infinity Track
-  fetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: pw })
-  }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.token) {
-      authToken = d.token;
-      localStorage.setItem('kwai_auth', authToken);
-      initApp();
-    } else {
-      var el = document.getElementById('login-error');
-      el.textContent = 'Senha incorreta';
-      el.classList.add('show');
-    }
-  }).catch(function() {
-    // Fallback: tenta autenticar diretamente
-    authToken = btoa(pw + ':kwai');
-    localStorage.setItem('kwai_auth', authToken);
-    initApp();
-  });
+  fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) })
+    .then(function(r){return r.json();}).then(function(d){
+      if (d.token) { authToken=d.token; localStorage.setItem('kwai_auth',authToken); initApp(); }
+      else { var el=document.getElementById('login-error'); el.textContent='Senha incorreta'; el.classList.add('show'); }
+    }).catch(function(){ initApp(); });
 }
 
 function initApp() {
-  document.getElementById('LS').style.display = 'none';
-  document.getElementById('APP').style.display = 'block';
+  document.getElementById('LS').style.display='none';
+  document.getElementById('APP').style.display='block';
   loadStats();
 }
 
 function api(method, url, body) {
-  var opts = { method: method, headers: { 'x-auth-token': authToken } };
-  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-  return fetch(url, opts).then(function(r) { return r.json(); });
+  var opts = { method:method, headers:{'x-auth-token':authToken} };
+  if (body) { opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(body); }
+  return fetch(url, opts).then(function(r){return r.json();});
 }
 
-// ── NAVEGAÇÃO ──────────────────────────────────────────────
 function showPage(name, el) {
-  document.querySelectorAll('.PG').forEach(function(p) { p.classList.remove('active'); });
-  document.querySelectorAll('.NI').forEach(function(n) { n.classList.remove('active'); });
-  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.PG').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.NI').forEach(function(n){n.classList.remove('active');});
+  document.getElementById('page-'+name).classList.add('active');
   if (el) el.classList.add('active');
-  if (name === 'dashboard') loadStats();
-  if (name === 'leads') loadLeads(currentFilter);
+  if (name==='dashboard') loadStats();
+  if (name==='leads') loadLeads(currentFilter);
+  if (name==='numeros') loadNumbers();
 }
 
-// ── STATS ──────────────────────────────────────────────────
 function loadStats() {
-  api('GET', '/api/kwai/stats').then(function(d) {
+  api('GET','/api/kwai/stats').then(function(d){
     if (!d) return;
-    document.getElementById('sk-leads-hoje').textContent  = d.leads_hoje;
-    document.getElementById('sk-vendas-hoje').textContent = d.vendas_hoje;
-    document.getElementById('sk-total').textContent       = d.total_leads;
-    document.getElementById('sk-taxa').textContent        = d.taxa_conversao;
+    document.getElementById('sk-leads-hoje').textContent=d.leads_hoje;
+    document.getElementById('sk-vendas-hoje').textContent=d.vendas_hoje;
+    document.getElementById('sk-total').textContent=d.total_leads;
+    document.getElementById('sk-taxa').textContent=d.taxa_conversao;
     loadDashLeads();
   });
 }
 
 function loadDashLeads() {
-  api('GET', '/api/kwai/leads?limit=10').then(function(d) {
+  api('GET','/api/kwai/leads?limit=10').then(function(d){
     if (!d) return;
-    var tb = document.getElementById('dash-tbody');
-    if (!d.leads || !d.leads.length) {
-      tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead ainda. Configure o script na pretzel.</td></tr>';
-      return;
-    }
-    tb.innerHTML = d.leads.map(function(l) {
-      return '<tr>' +
-        '<td style="font-family:monospace;font-size:11px;color:var(--mut)">' + (l.click_id ? l.click_id.substring(0,20)+'...' : '—') + '</td>' +
-        '<td>' + (l.campaign_id || '—') + '</td>' +
-        '<td><span class="BDG ' + l.status + '">' + (l.status === 'purchased' ? '✓ Venda' : '● Lead') + '</span></td>' +
-        '<td style="color:var(--mut);font-size:12px">' + fmtDate(l.created_at) + '</td>' +
-        '<td>' + (l.status !== 'purchased'
-          ? '<button class="BT BGS BSM" onclick="quickPurchase(' + l.id + ')">⚡ Purchase</button>'
-          : '<span style="color:var(--grn);font-size:12px">R$ ' + (l.purchase_value || '—') + '</span>'
-        ) + '</td>' +
+    var tb=document.getElementById('dash-tbody');
+    if (!d.leads||!d.leads.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead ainda. Configure o script na pretzel.</td></tr>';return;}
+    tb.innerHTML=d.leads.map(function(l){
+      return '<tr>'+
+        '<td style="font-family:monospace;font-size:11px;color:var(--mut)">'+(l.click_id?l.click_id.substring(0,16)+'...':'—')+'</td>'+
+        '<td style="font-family:monospace;font-size:12px">'+(l.wpp_number||'—')+'</td>'+
+        '<td>'+(l.campaign_id||'—')+'</td>'+
+        '<td><span class="BDG '+l.status+'">'+(l.status==='purchased'?'✓ Venda':'● Lead')+'</span></td>'+
+        '<td style="color:var(--mut);font-size:12px">'+fmtDate(l.created_at)+'</td>'+
+        '<td>'+(l.status!=='purchased'?'<button class="BGS" onclick="quickPurchase('+l.id+')">⚡ Purchase</button>':'<span style="color:var(--grn);font-size:12px">R$ '+(l.purchase_value||'—')+'</span>')+'</td>'+
       '</tr>';
     }).join('');
   });
 }
 
-// ── BUSCAR LEAD ────────────────────────────────────────────
+// ── NÚMEROS ───────────────────────────────────────────────
+function loadNumbers() {
+  api('GET','/api/kwai/numbers').then(function(d){
+    if (!d) return;
+    var el=document.getElementById('numbers-list');
+    if (!d.numbers||!d.numbers.length){
+      el.innerHTML='<p style="color:var(--mut);font-size:13px">Nenhum número cadastrado ainda.</p>';
+      return;
+    }
+    el.innerHTML=d.numbers.map(function(n){
+      var link=BASE+'/kwai/ir?phone='+n.number+'&campaign_id=glivia';
+      return '<div class="num-card">'+
+        '<div class="num-info">'+
+          '<div class="num-label">'+n.label+'</div>'+
+          '<div class="num-number">+'+n.number+'</div>'+
+          '<div class="num-link">'+link+'</div>'+
+        '</div>'+
+        '<div class="num-actions">'+
+          '<button class="BCY" onclick="copiarTexto(\''+link+'\', this)">📋 Copiar link</button>'+
+          '<button class="BRD" onclick="deleteNumber('+n.id+')">✕</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  });
+}
+
+function addNumber() {
+  var label  = document.getElementById('num-label').value.trim();
+  var number = document.getElementById('num-number').value.trim().replace(/\D/g,'');
+  if (!number) { showAlert('num-error','Digite o número'); return; }
+  if (number.length < 10) { showAlert('num-error','Número inválido. Inclua DDI e DDD. Ex: 5562981585394'); return; }
+  hideAlert('num-error');
+  api('POST','/api/kwai/numbers',{label:label||number, number:number}).then(function(d){
+    if (d&&d.ok) {
+      showAlert('num-success','✅ Número adicionado!');
+      document.getElementById('num-label').value='';
+      document.getElementById('num-number').value='';
+      loadNumbers();
+    } else {
+      showAlert('num-error',(d&&d.error)||'Erro ao adicionar');
+    }
+  });
+}
+
+function deleteNumber(id) {
+  if (!confirm('Remover este número?')) return;
+  api('DELETE','/api/kwai/numbers/'+id).then(function(d){
+    if (d&&d.ok) loadNumbers();
+  });
+}
+
+function copiarTexto(text, btn) {
+  navigator.clipboard.writeText(text).then(function(){
+    var orig=btn.textContent;
+    btn.textContent='✓ Copiado!';
+    setTimeout(function(){btn.textContent=orig;},2000);
+  });
+}
+
+// ── BUSCAR / DISPARAR ─────────────────────────────────────
 function buscarLead() {
-  var phone = document.getElementById('search-phone').value.trim();
+  var phone=document.getElementById('search-phone').value.trim();
   if (!phone) return;
   document.getElementById('result-box').classList.remove('show');
-  document.getElementById('multi-results').style.display = 'none';
-
-  api('GET', '/api/kwai/lead/' + encodeURIComponent(phone)).then(function(d) {
-    if (!d || !d.leads.length) { alert('Nenhum lead encontrado com este número'); return; }
-    if (d.leads.length === 1) {
-      mostrarLead(d.leads[0]);
-    } else {
-      mostrarMultiplos(d.leads);
-    }
+  document.getElementById('multi-results').style.display='none';
+  api('GET','/api/kwai/lead/'+encodeURIComponent(phone)).then(function(d){
+    if (!d||!d.leads.length){alert('Nenhum lead encontrado');return;}
+    if (d.leads.length===1){mostrarLead(d.leads[0]);}else{mostrarMultiplos(d.leads);}
   });
 }
 
 function mostrarLead(lead) {
-  currentLead = lead;
-  document.getElementById('r-phone').textContent    = lead.phone ? fmtPhone(lead.phone) : '(sem número)';
-  document.getElementById('r-meta').textContent     = 'ID #' + lead.id + ' — ' + fmtDate(lead.created_at);
-  document.getElementById('r-clickid').textContent  = lead.click_id || '(sem click ID)';
-  document.getElementById('r-id').textContent       = '#' + lead.id;
-  document.getElementById('r-campaign').textContent = lead.campaign_id || '—';
-  document.getElementById('r-time').textContent     = fmtDate(lead.created_at);
-
-  var badge = document.getElementById('r-status-badge');
-  badge.className = 'BDG ' + lead.status;
-  badge.textContent = lead.status === 'purchased' ? '✓ Venda realizada' : '● Lead ativo';
-
-  var btn = document.getElementById('btn-purchase');
-  if (lead.status === 'purchased') {
-    btn.disabled = true;
-    btn.textContent = '✓ Purchase já disparado';
-  } else {
-    btn.disabled = false;
-    btn.textContent = '⚡ Disparar Purchase nos 2 Pixels';
-  }
-
-  hideAlert('purchase-success'); hideAlert('purchase-error');
+  currentLead=lead;
+  document.getElementById('r-phone').textContent=lead.phone?fmtPhone(lead.phone):'(sem número)';
+  document.getElementById('r-meta').textContent='ID #'+lead.id+' — '+fmtDate(lead.created_at);
+  document.getElementById('r-clickid').textContent=lead.click_id||'(sem click ID)';
+  document.getElementById('r-id').textContent='#'+lead.id;
+  document.getElementById('r-campaign').textContent=lead.campaign_id||'—';
+  document.getElementById('r-wpp').textContent=lead.wpp_number||'—';
+  var badge=document.getElementById('r-status-badge');
+  badge.className='BDG '+lead.status;
+  badge.textContent=lead.status==='purchased'?'✓ Venda realizada':'● Lead ativo';
+  var btn=document.getElementById('btn-purchase');
+  if (lead.status==='purchased'){btn.disabled=true;btn.textContent='✓ Purchase já disparado';}
+  else{btn.disabled=false;btn.textContent='⚡ Disparar Purchase nos 2 Pixels';}
+  hideAlert('purchase-success');hideAlert('purchase-error');
   document.getElementById('result-box').classList.add('show');
-  document.getElementById('multi-results').style.display = 'none';
+  document.getElementById('multi-results').style.display='none';
 }
 
 function mostrarMultiplos(leads) {
-  var list = document.getElementById('multi-list');
-  list.innerHTML = leads.map(function(l) {
-    return '<div class="multi-item" onclick=\'mostrarLead(' + JSON.stringify(l).replace(/'/g,"&#39;") + ')\'>' +
-      '<div><div style="font-family:monospace">' + (l.phone ? fmtPhone(l.phone) : 'ID #' + l.id) + '</div>' +
-      '<div style="font-size:11px;color:var(--mut);margin-top:2px">' + fmtDate(l.created_at) + '</div></div>' +
-      '<span class="BDG ' + l.status + '">' + (l.status === 'purchased' ? '✓ Venda' : '● Lead') + '</span>' +
+  var list=document.getElementById('multi-list');
+  list.innerHTML=leads.map(function(l){
+    return '<div class="multi-item" onclick=\'mostrarLead('+JSON.stringify(l).replace(/'/g,"&#39;")+')\'>'+
+      '<div><div style="font-family:monospace">'+(l.phone?fmtPhone(l.phone):'ID #'+l.id)+'</div>'+
+      '<div style="font-size:11px;color:var(--mut);margin-top:2px">'+fmtDate(l.created_at)+'</div></div>'+
+      '<span class="BDG '+l.status+'">'+(l.status==='purchased'?'✓ Venda':'● Lead')+'</span>'+
     '</div>';
   }).join('');
-  document.getElementById('multi-results').style.display = 'block';
+  document.getElementById('multi-results').style.display='block';
 }
 
-// ── DISPARAR PURCHASE ──────────────────────────────────────
 function dispararPurchase() {
   if (!currentLead) return;
-  var value = parseFloat(document.getElementById('purchase-value').value) || 297;
-  var btn   = document.getElementById('btn-purchase');
-  btn.disabled = true;
-  btn.textContent = 'Disparando...';
-
-  api('POST', '/api/kwai/purchase', { lead_id: currentLead.id, value: value }).then(function(d) {
-    if (d && d.success) {
-      showAlert('purchase-success', '✅ Purchase de R$ ' + value.toFixed(2) + ' disparado nos 2 pixels!');
-      btn.textContent = '✓ Disparado com sucesso!';
-      document.getElementById('r-status-badge').className = 'BDG purchased';
-      document.getElementById('r-status-badge').textContent = '✓ Venda realizada';
+  var value=parseFloat(document.getElementById('purchase-value').value)||297;
+  var btn=document.getElementById('btn-purchase');
+  btn.disabled=true; btn.textContent='Disparando...';
+  api('POST','/api/kwai/purchase',{lead_id:currentLead.id,value:value}).then(function(d){
+    if (d&&d.success){
+      showAlert('purchase-success','✅ Purchase de R$ '+value.toFixed(2)+' disparado nos 2 pixels!');
+      btn.textContent='✓ Disparado!';
+      document.getElementById('r-status-badge').className='BDG purchased';
+      document.getElementById('r-status-badge').textContent='✓ Venda realizada';
       loadStats();
     } else {
-      btn.disabled = false;
-      btn.textContent = '⚡ Disparar Purchase nos 2 Pixels';
-      showAlert('purchase-error', 'Erro: ' + ((d && d.error) || 'Falha desconhecida'));
+      btn.disabled=false; btn.textContent='⚡ Disparar Purchase nos 2 Pixels';
+      showAlert('purchase-error','Erro: '+((d&&d.error)||'Falha'));
     }
-  }).catch(function(e) {
-    btn.disabled = false;
-    btn.textContent = '⚡ Disparar Purchase nos 2 Pixels';
-    showAlert('purchase-error', 'Erro: ' + e.message);
   });
 }
 
 function quickPurchase(id) {
-  if (!confirm('Disparar Purchase para o lead #' + id + '?')) return;
-  api('POST', '/api/kwai/purchase', { lead_id: id, value: 297 }).then(function(d) {
-    if (d && d.success) { alert('✅ Purchase disparado!'); loadStats(); }
-    else alert('Erro: ' + ((d && d.error) || 'Falha'));
+  if (!confirm('Disparar Purchase para lead #'+id+'?')) return;
+  api('POST','/api/kwai/purchase',{lead_id:id,value:297}).then(function(d){
+    if (d&&d.success){alert('✅ Purchase disparado!');loadStats();}
+    else alert('Erro: '+((d&&d.error)||'Falha'));
   });
 }
 
-// ── LEADS TABLE ────────────────────────────────────────────
+// ── LEADS TABLE ───────────────────────────────────────────
 function loadLeads(status) {
-  currentFilter = status;
-  var tb = document.getElementById('leads-tbody');
-  tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mut);padding:30px">Carregando...</td></tr>';
-  api('GET', '/api/kwai/leads?limit=100' + (status ? '&status=' + status : '')).then(function(d) {
-    if (!d || !d.leads.length) {
-      tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead encontrado</td></tr>';
-      return;
-    }
-    tb.innerHTML = d.leads.map(function(l) {
-      return '<tr>' +
-        '<td style="color:var(--mut)">#' + l.id + '</td>' +
-        '<td style="font-family:monospace">' + (l.phone ? fmtPhone(l.phone) : '—') + '</td>' +
-        '<td style="font-family:monospace;font-size:11px;color:var(--mut)">' + (l.click_id ? l.click_id.substring(0,18)+'...' : '—') + '</td>' +
-        '<td><span class="BDG ' + l.status + '">' + (l.status === 'purchased' ? '✓ Venda' : '● Lead') + '</span></td>' +
-        '<td style="color:var(--grn)">' + (l.purchase_value ? 'R$ ' + l.purchase_value : '—') + '</td>' +
-        '<td style="color:var(--mut);font-size:12px">' + fmtDate(l.created_at) + '</td>' +
-        '<td>' + (l.status !== 'purchased'
-          ? '<button class="BT BGS BSM" onclick="quickPurchase(' + l.id + ')">⚡</button>'
-          : '<span style="font-size:11px;color:var(--mut)">' + fmtDate(l.purchased_at) + '</span>'
-        ) + '</td>' +
+  currentFilter=status;
+  var tb=document.getElementById('leads-tbody');
+  tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--mut);padding:30px">Carregando...</td></tr>';
+  api('GET','/api/kwai/leads?limit=100'+(status?'&status='+status:'')).then(function(d){
+    if (!d||!d.leads.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--mut);padding:40px">Nenhum lead</td></tr>';return;}
+    tb.innerHTML=d.leads.map(function(l){
+      return '<tr>'+
+        '<td style="color:var(--mut)">#'+l.id+'</td>'+
+        '<td style="font-family:monospace">'+(l.phone?fmtPhone(l.phone):'—')+'</td>'+
+        '<td style="font-family:monospace;font-size:11px;color:var(--mut)">'+(l.click_id?l.click_id.substring(0,18)+'...':'—')+'</td>'+
+        '<td style="font-family:monospace;font-size:12px">'+(l.wpp_number||'—')+'</td>'+
+        '<td><span class="BDG '+l.status+'">'+(l.status==='purchased'?'✓ Venda':'● Lead')+'</span></td>'+
+        '<td style="color:var(--grn)">'+(l.purchase_value?'R$ '+l.purchase_value:'—')+'</td>'+
+        '<td style="color:var(--mut);font-size:12px">'+fmtDate(l.created_at)+'</td>'+
+        '<td>'+(l.status!=='purchased'?'<button class="BGS" onclick="quickPurchase('+l.id+')">⚡</button>':'<span style="font-size:11px;color:var(--mut)">'+fmtDate(l.purchased_at)+'</span>')+'</td>'+
       '</tr>';
     }).join('');
   });
 }
 
-function filtrar(el, status) {
-  document.querySelectorAll('.TT').forEach(function(t) { t.classList.remove('active'); });
-  el.classList.add('active');
-  loadLeads(status);
+function filtrar(el,status){
+  document.querySelectorAll('.TT').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');loadLeads(status);
 }
 
-// ── UTILS ──────────────────────────────────────────────────
-function fmtPhone(p) {
-  if (!p) return '—';
-  var d = p.replace(/\D/g,'');
-  if (d.length >= 12) return '+' + d.substring(0,2) + ' (' + d.substring(2,4) + ') ' + d.substring(4,9) + '-' + d.substring(9);
-  if (d.length === 11) return '(' + d.substring(0,2) + ') ' + d.substring(2,7) + '-' + d.substring(7);
+function fmtPhone(p){
+  if(!p)return'—';
+  var d=p.replace(/\D/g,'');
+  if(d.length>=12)return'+'+d.substring(0,2)+' ('+d.substring(2,4)+') '+d.substring(4,9)+'-'+d.substring(9);
+  if(d.length===11)return'('+d.substring(0,2)+') '+d.substring(2,7)+'-'+d.substring(7);
   return p;
 }
-
-function fmtDate(dt) {
-  if (!dt) return '—';
-  return new Date(dt).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-}
-
-function showAlert(id, msg) { var el = document.getElementById(id); if (!el) return; el.textContent = msg; el.classList.add('show'); }
-function hideAlert(id) { var el = document.getElementById(id); if (el) el.classList.remove('show'); }
-
-function copiar(id) {
-  var text = document.getElementById(id).innerText.replace('Copiar','').trim();
-  navigator.clipboard.writeText(text).then(function() {
-    var btn = document.querySelector('#' + id + ' .CB');
-    if (btn) { btn.textContent = '✓ Copiado'; setTimeout(function() { btn.textContent = 'Copiar'; }, 2000); }
+function fmtDate(dt){if(!dt)return'—';return new Date(dt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function showAlert(id,msg){var el=document.getElementById(id);if(!el)return;el.textContent=msg;el.classList.add('show');}
+function hideAlert(id){var el=document.getElementById(id);if(el)el.classList.remove('show');}
+function copiar(id){
+  var text=document.getElementById(id).innerText.replace('Copiar','').trim();
+  navigator.clipboard.writeText(text).then(function(){
+    var btn=document.querySelector('#'+id+' .CB');
+    if(btn){btn.textContent='✓ Copiado';setTimeout(function(){btn.textContent='Copiar';},2000);}
   });
 }
 
