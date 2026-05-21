@@ -220,33 +220,14 @@ function kwaiPool() {
 
 async function initKwaiDB() {
   const pool = kwaiPool();
+  // Cria tabela base se nao existir
   await pool.query(`
     CREATE TABLE IF NOT EXISTS kwai_leads (
-      id             SERIAL PRIMARY KEY,
-      lead_id        VARCHAR(20) UNIQUE,
-      phone          VARCHAR(30),
-      kwai_click_id  VARCHAR(255),
-      utm_source     VARCHAR(100),
-      utm_campaign   VARCHAR(100),
-      utm_adset      VARCHAR(100),
-      utm_ad         VARCHAR(100),
-      wpp_number     VARCHAR(30),
-      user_agent     TEXT,
-      ip             VARCHAR(50),
-      session_id     VARCHAR(100),
-      status         VARCHAR(20) DEFAULT 'visitou',
-      clicks         INT DEFAULT 0,
-      created_at     TIMESTAMP DEFAULT NOW(),
-      clicked_at     TIMESTAMP,
-      purchased_at   TIMESTAMP,
-      purchase_value DECIMAL(10,2),
-      kwai_results   JSONB
+      id         SERIAL PRIMARY KEY,
+      phone      VARCHAR(30),
+      status     VARCHAR(20) DEFAULT 'visitou',
+      created_at TIMESTAMP DEFAULT NOW()
     );
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_kwai_lead_id  ON kwai_leads(lead_id);
-    CREATE INDEX IF NOT EXISTS idx_kwai_phone           ON kwai_leads(phone);
-    CREATE INDEX IF NOT EXISTS idx_kwai_click_id        ON kwai_leads(kwai_click_id);
-    CREATE INDEX IF NOT EXISTS idx_kwai_status          ON kwai_leads(status);
-    CREATE INDEX IF NOT EXISTS idx_kwai_created         ON kwai_leads(created_at DESC);
     CREATE TABLE IF NOT EXISTS kwai_numbers (
       id         SERIAL PRIMARY KEY,
       label      VARCHAR(100),
@@ -256,7 +237,7 @@ async function initKwaiDB() {
     );
   `);
 
-  // Migrations para tabelas existentes
+  // Migrations — adiciona colunas novas com seguranca
   var migrations = [
     "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS lead_id VARCHAR(20)",
     "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS kwai_click_id VARCHAR(255)",
@@ -270,7 +251,14 @@ async function initKwaiDB() {
     "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS session_id VARCHAR(100)",
     "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS clicks INT DEFAULT 0",
     "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMP",
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_kwai_lead_id ON kwai_leads(lead_id)"
+    "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS purchased_at TIMESTAMP",
+    "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS purchase_value DECIMAL(10,2)",
+    "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS kwai_results JSONB",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_kwai_lead_id ON kwai_leads(lead_id)",
+    "CREATE INDEX IF NOT EXISTS idx_kwai_phone ON kwai_leads(phone)",
+    "CREATE INDEX IF NOT EXISTS idx_kwai_click_id ON kwai_leads(kwai_click_id)",
+    "CREATE INDEX IF NOT EXISTS idx_kwai_status ON kwai_leads(status)",
+    "CREATE INDEX IF NOT EXISTS idx_kwai_created ON kwai_leads(created_at DESC)"
   ];
   for (var i = 0; i < migrations.length; i++) {
     try { await pool.query(migrations[i]); } catch(e) {}
