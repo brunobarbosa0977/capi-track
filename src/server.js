@@ -319,18 +319,61 @@ async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
     results.push({ method: 'activate', ok: false, error: e1.message });
   }
 
-  // Método 2: Endpoint do pixel via POST (fallback)
+  // Método 2: Simulação completa de browser mobile
   try {
+    var mobilePayload = {
+      pixel_id: pixelId,
+      events: [{
+        event_name: eventName,
+        event_id:   eventId,
+        event_time: Math.floor(Date.now() / 1000),
+        user_data: Object.assign({},
+          clickId ? { click_id: clickId } : {},
+          (extra && extra.phone) ? { ph: extra.phone.replace(/\D/g, '') } : {}
+        ),
+        custom_data: {
+          value:        (extra && extra.value) || DEFAULT_VALUE,
+          currency:     'BRL',
+          content_name: 'Glivia',
+          content_id:   'glivia',
+          content_type: 'product'
+        },
+        page: {
+          url:      'https://oficialvitalife.shop/obrigado',
+          referrer: 'https://oficialvitalife.shop/life/'
+        }
+      }]
+    };
+    var ip1 = '177.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255);
     var r2 = await fetch(
-      'https://s21-def.ap4r.com/rest/n/v1/pixel/batch?sdkid=' + pixelId,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+      'https://s21-def.ap4r.com/rest/n/v1/pixel/batch?sdkid=' + pixelId + '&lib=kwaiq',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type':       'application/json',
+          'Accept':             'application/json, text/plain, */*',
+          'Accept-Language':    'pt-BR,pt;q=0.9',
+          'Origin':             'https://oficialvitalife.shop',
+          'Referer':            'https://oficialvitalife.shop/obrigado',
+          'User-Agent':         'Mozilla/5.0 (Linux; Android 13; SM-A536B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
+          'sec-ch-ua':          '"Chromium";v="112","Google Chrome";v="112","Not:A-Brand";v="99"',
+          'sec-ch-ua-mobile':   '?1',
+          'sec-ch-ua-platform': '"Android"',
+          'sec-fetch-dest':     'empty',
+          'sec-fetch-mode':     'cors',
+          'sec-fetch-site':     'cross-site',
+          'x-forwarded-for':    ip1,
+          'x-real-ip':          ip1
+        },
+        body: JSON.stringify(mobilePayload)
+      }
     );
     var b2 = await r2.text();
-    console.log('[Kwai Pixel ' + pixelId + '] ' + eventName + ' → ' + r2.status + ': ' + b2);
-    results.push({ method: 'pixel', ok: r2.ok, status: r2.status, body: b2, event_id: eventId });
+    console.log('[Kwai Mobile ' + pixelId + '] ' + eventName + ' → ' + r2.status + ': ' + b2);
+    results.push({ method: 'mobile', ok: r2.ok, status: r2.status, body: b2, event_id: eventId });
   } catch(err) {
-    console.error('[Kwai Pixel ' + pixelId + '] Erro:', err.message);
-    results.push({ method: 'pixel', ok: false, error: err.message, event_id: eventId });
+    console.error('[Kwai Mobile ' + pixelId + '] Erro:', err.message);
+    results.push({ method: 'mobile', ok: false, error: err.message, event_id: eventId });
   }
 
   var success = results.some(function(r) { return r.ok; });
