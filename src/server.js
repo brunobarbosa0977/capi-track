@@ -294,7 +294,24 @@ async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
   try {
     const res = await fetch(
       'https://s21-def.ap4r.com/rest/n/v1/pixel/batch?sdkid=' + pixelId,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+          'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+          'Origin': 'https://oficialvitalife.shop',
+          'Referer': 'https://oficialvitalife.shop/',
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+          'sec-ch-ua-mobile': '?1',
+          'sec-ch-ua-platform': '"Android"',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'cross-site'
+        },
+        body: JSON.stringify(payload)
+      }
     );
     const body = await res.text();
     console.log('[Kwai ' + pixelId + '] ' + eventName + ' → ' + res.status + ': ' + body);
