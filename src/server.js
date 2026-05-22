@@ -297,17 +297,19 @@ async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
 
   // Método 1: Endpoint oficial de tracking server-side
   try {
-    var activatePayload = {
-      callback: clickId || '',
-      event_type: 'purchase',
-      event_id: eventId,
-      timestamp: Math.floor(Date.now() / 1000),
-      value: (extra && extra.value) || DEFAULT_VALUE,
-      currency: 'BRL'
-    };
-    var r1 = await fetch('http://ad.partner.gifshow.com/track/activate?' + new URLSearchParams(activatePayload).toString(), {
+    // Monta payload com tipos corretos (int onde necessário)
+    var activateParams = new URLSearchParams();
+    if (clickId) activateParams.append('callback', clickId);
+    activateParams.append('event_type', 'purchase');
+    activateParams.append('event_id', eventId);
+    activateParams.append('timestamp', String(Math.floor(Date.now() / 1000)));
+    activateParams.append('value', String(Math.round(((extra && extra.value) || DEFAULT_VALUE) * 100)));
+    activateParams.append('currency', 'BRL');
+    if (extra && extra.phone) activateParams.append('phone', extra.phone.replace(/\D/g, ''));
+
+    var r1 = await fetch('http://ad.partner.gifshow.com/track/activate?' + activateParams.toString(), {
       method: 'GET',
-      headers: { 'User-Agent': 'Mozilla/5.0' }
+      headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36' }
     });
     var b1 = await r1.text();
     console.log('[Kwai Activate ' + pixelId + '] → ' + r1.status + ': ' + b1);
