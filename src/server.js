@@ -291,35 +291,48 @@ async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
     pixel_id: pixelId,
     events: [eventObj]
   };
+  // Tenta endpoint oficial de conversão server-side primeiro
+  // Fonte: SDK oficial kwai-marketing-api (ad.partner.gifshow.com/track/activate)
+  var results = [];
+
+  // Método 1: Endpoint oficial de tracking server-side
   try {
-    const res = await fetch(
-      'https://s21-def.ap4r.com/rest/n/v1/pixel/batch?sdkid=' + pixelId,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': '*/*',
-          'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-          'Origin': 'https://oficialvitalife.shop',
-          'Referer': 'https://oficialvitalife.shop/',
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-          'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-          'sec-ch-ua-mobile': '?1',
-          'sec-ch-ua-platform': '"Android"',
-          'sec-fetch-dest': 'empty',
-          'sec-fetch-mode': 'cors',
-          'sec-fetch-site': 'cross-site'
-        },
-        body: JSON.stringify(payload)
-      }
-    );
-    const body = await res.text();
-    console.log('[Kwai ' + pixelId + '] ' + eventName + ' → ' + res.status + ': ' + body);
-    return { ok: res.ok, status: res.status, body: body, event_id: eventId };
-  } catch(err) {
-    console.error('[Kwai ' + pixelId + '] Erro:', err.message);
-    return { ok: false, error: err.message, event_id: eventId };
+    var activatePayload = {
+      callback: clickId || '',
+      event_type: 'purchase',
+      event_id: eventId,
+      timestamp: Math.floor(Date.now() / 1000),
+      value: (extra && extra.value) || DEFAULT_VALUE,
+      currency: 'BRL'
+    };
+    var r1 = await fetch('http://ad.partner.gifshow.com/track/activate?' + new URLSearchParams(activatePayload).toString(), {
+      method: 'GET',
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    var b1 = await r1.text();
+    console.log('[Kwai Activate ' + pixelId + '] → ' + r1.status + ': ' + b1);
+    results.push({ method: 'activate', ok: r1.ok, status: r1.status, body: b1 });
+  } catch(e1) {
+    console.error('[Kwai Activate] Erro:', e1.message);
+    results.push({ method: 'activate', ok: false, error: e1.message });
   }
+
+  // Método 2: Endpoint do pixel via POST (fallback)
+  try {
+    var r2 = await fetch(
+      'https://s21-def.ap4r.com/rest/n/v1/pixel/batch?sdkid=' + pixelId,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+    );
+    var b2 = await r2.text();
+    console.log('[Kwai Pixel ' + pixelId + '] ' + eventName + ' → ' + r2.status + ': ' + b2);
+    results.push({ method: 'pixel', ok: r2.ok, status: r2.status, body: b2, event_id: eventId });
+  } catch(err) {
+    console.error('[Kwai Pixel ' + pixelId + '] Erro:', err.message);
+    results.push({ method: 'pixel', ok: false, error: err.message, event_id: eventId });
+  }
+
+  var success = results.some(function(r) { return r.ok; });
+  return { ok: success, results: results, event_id: eventId };
 }
 
 async function kwaiDispararTodos(eventName, clickId, extra) {
