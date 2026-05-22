@@ -297,14 +297,15 @@ async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
 
   // Método 1: Endpoint oficial de tracking server-side
   try {
-    // event_type=3 é PURCHASE (fonte: SDK oficial kwai-marketing-api)
-    // event_time deve ser milissegundos (13 dígitos)
-    // purchase_amount em reais com 2 casas decimais
+    // Tenta múltiplos endpoints para encontrar o que registra no pixel web
     var activateParams = new URLSearchParams();
     if (clickId) activateParams.append('callback', clickId);
+    activateParams.append('pixel_id', pixelId);
     activateParams.append('event_type', '3');
     activateParams.append('event_time', String(Date.now()));
     activateParams.append('purchase_amount', String(((extra && extra.value) || DEFAULT_VALUE).toFixed(2)));
+    activateParams.append('event_name', 'EVENT_PURCHASE');
+    if (extra && extra.phone) activateParams.append('phone', (extra.phone || '').replace(/\D/g, ''));
 
     var r1 = await fetch('http://ad.partner.gifshow.com/track/activate?' + activateParams.toString(), {
       method: 'GET',
