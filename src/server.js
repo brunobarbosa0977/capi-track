@@ -227,33 +227,35 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
       return res.status(200).json({ ok: true, ignored: true, reason: 'sem telefone' });
     }
 
-    // Usa o primeiro pixel cadastrado
+    // Dispara para todos os pixels cadastrados simultaneamente
     const pixels = await db.getPixels();
     if (!pixels || !pixels.length) {
       return res.status(400).json({ error: 'Nenhum pixel configurado no Infinity Track' });
     }
-    const pixelCfg = pixels[0];
 
-    console.log('[FiveDelivery] Disparando Purchase → ' + lead.phone + ' | R$' + lead.value + ' | orderId: ' + body.orderId);
+    console.log('[FiveDelivery] Disparando Purchase → ' + lead.phone + ' | R$' + lead.value + ' | pixels: ' + pixels.length + ' | orderId: ' + body.orderId);
 
-    const result = await metaApi.sendPurchase(pixelCfg, lead);
+    const results = await Promise.all(pixels.map(async function(pixelCfg) {
+      const result = await metaApi.sendPurchase(pixelCfg, lead);
+      await db.insertEvent({
+        pixel_id:   pixelCfg.id,
+        pixel_name: pixelCfg.name,
+        name:       lead.name,
+        phone:      lead.phone,
+        email:      lead.email,
+        value:      lead.value,
+        gender:     lead.gender,
+        cep:        lead.cep,
+        status:     result.success ? 'sent' : 'error',
+        error_msg:  result.error || null,
+        source:     'five_delivery'
+      });
+      console.log('[FiveDelivery] Pixel ' + pixelCfg.name + ': ' + (result.success ? '✅ enviado' : '❌ ' + result.error));
+      return { pixel: pixelCfg.name, success: result.success };
+    }));
 
-    await db.insertEvent({
-      pixel_id:   pixelCfg.id,
-      pixel_name: pixelCfg.name,
-      name:       lead.name,
-      phone:      lead.phone,
-      email:      lead.email,
-      value:      lead.value,
-      gender:     lead.gender,
-      cep:        lead.cep,
-      status:     result.success ? 'sent' : 'error',
-      error_msg:  result.error || null,
-      source:     'five_delivery'
-    });
-
-    console.log('[FiveDelivery] Resultado:', result.success ? '✅ enviado' : '❌ erro: ' + result.error);
-    res.status(200).json({ ok: true, success: result.success, phone: lead.phone, value: lead.value });
+    const sent = results.filter(function(r) { return r.success; }).length;
+    res.status(200).json({ ok: true, sent: sent, total: pixels.length, phone: lead.phone, value: lead.value, results: results });
 
   } catch(e) {
     console.error('[FiveDelivery] Erro:', e.message);
