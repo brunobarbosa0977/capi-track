@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Webhook Spy — Infinity Track</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --green: #10b981;
+    --red: #f43f5e;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --code-bg: #0d1117;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 32px 24px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent2); }
+
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  input[type=password], input[type=text] {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 220px;
+    outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+  button {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  button:hover { opacity: .8; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-danger  { background: var(--red); color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+
+  .url-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 28px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .url-box strong { color: var(--accent2); font-size: 14px; }
+  .url-box code {
+    background: var(--code-bg);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--text);
+    font-family: monospace;
+    font-size: 13px;
+  }
+
+  #status { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  #status.ok  { color: var(--green); }
+  #status.err { color: var(--red); }
+
+  .log-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .log-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+  .log-header:hover { background: rgba(124,58,237,.05); }
+  .badge {
+    background: var(--green);
+    color: #000;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .log-id { color: var(--muted); font-size: 12px; }
+  .log-time { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .log-ip { color: var(--accent2); font-size: 12px; }
+
+  .log-body { display: none; padding: 0; }
+  .log-body.open { display: block; }
+
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding: 8px 18px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  pre {
+    background: var(--code-bg);
+    padding: 16px 18px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    overflow-x: auto;
+    color: #a8d8ea;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .empty {
+    text-align: center;
+    padding: 60px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+  .empty .icon { font-size: 40px; margin-bottom: 12px; }
+
+  .copy-btn {
+    font-size: 11px;
+    padding: 3px 10px;
+    background: var(--border);
+    color: var(--muted);
+    border-radius: 4px;
+    margin-left: auto;
+    margin-right: 0;
+  }
+  .fields-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    padding: 16px 18px;
+  }
+  .field-item {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .field-key { font-size: 11px; color: var(--accent); font-family: monospace; }
+  .field-val { font-size: 13px; color: var(--text); margin-top: 4px; word-break: break-all; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="dot"></div>
+  <h1>Webhook <span>Spy</span> — Infinity Track</h1>
+</header>
+
+<div class="url-box">
+  <strong>🎯 Cole esta URL no webhook da Five Delivery:</strong><br><br>
+  <code id="spyUrl">https://SEU-DOMINIO.up.railway.app/webhook/spy</code>
+</div>
+
+<div class="toolbar">
+  <input type="password" id="tokenInput" placeholder="Sua senha do sistema" />
+  <button class="btn-primary" onclick="loadLogs()">🔄 Carregar logs</button>
+  <button class="btn-outline" onclick="autoRefresh()">▶ Auto-refresh (10s)</button>
+  <button class="btn-danger"  onclick="clearLogs()">🗑 Limpar logs</button>
+</div>
+
+<div id="status">Digite sua senha e clique em "Carregar logs"</div>
+<div id="container"></div>
+
+<script>
+  // Detecta o domínio atual e preenche a URL do spy
+  const base = window.location.origin;
+  document.getElementById('spyUrl').textContent = base + '/webhook/spy';
+
+  let refreshTimer = null;
+
+  async function loadLogs() {
+    const token = document.getElementById('tokenInput').value.trim();
+    if (!token) { setStatus('Digite a senha primeiro.', 'err'); return; }
+
+    setStatus('Carregando...', '');
+    try {
+      const res = await fetch(`/webhook/spy/logs?token=${encodeURIComponent(token)}`);
+      const data = await res.json();
+      if (!res.ok) { setStatus('❌ ' + (data.error || 'Erro'), 'err'); return; }
+
+      setStatus(`✅ ${data.total} log(s) encontrado(s)`, 'ok');
+      renderLogs(data.logs);
+    } catch(e) {
+      setStatus('❌ Erro de conexão: ' + e.message, 'err');
+    }
+  }
+
+  function renderLogs(logs) {
+    const c = document.getElementById('container');
+    if (!logs.length) {
+      c.innerHTML = '<div class="empty"><div class="icon">📭</div>Nenhum webhook recebido ainda.<br>Configure a Five Delivery para apontar pro endpoint acima e faça um pedido teste.</div>';
+      return;
+    }
+    c.innerHTML = logs.map((log, i) => {
+      let bodyParsed = {};
+      try { bodyParsed = JSON.parse(log.body); } catch(e) {}
+      const fields = flattenObj(bodyParsed);
+
+      return `
+      <div class="log-card">
+        <div class="log-header" onclick="toggleLog(${log.id})">
+          <span class="badge">POST</span>
+          <span class="log-id">#${log.id}</span>
+          <span class="log-ip">📍 ${log.ip || 'desconhecido'}</span>
+          <span class="log-time">🕐 ${log.received_at}</span>
+        </div>
+        <div class="log-body" id="log-${log.id}">
+          <div class="tabs">
+            <div class="tab active" onclick="switchTab(${log.id},'fields',this)">📋 Campos</div>
+            <div class="tab" onclick="switchTab(${log.id},'body',this)">{ } Body JSON</div>
+            <div class="tab" onclick="switchTab(${log.id},'headers',this)">📨 Headers</div>
+          </div>
+          <div class="tab-content active" id="fields-${log.id}">
+            <div class="fields-grid">
+              ${fields.map(f => `<div class="field-item"><div class="field-key">${escHtml(f.key)}</div><div class="field-val">${escHtml(String(f.val))}</div></div>`).join('')}
+            </div>
+          </div>
+          <div class="tab-content" id="body-${log.id}">
+            <pre>${syntaxHL(log.body || '{}')}</pre>
+          </div>
+          <div class="tab-content" id="headers-${log.id}">
+            <pre>${syntaxHL(log.headers || '{}')}</pre>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleLog(id) {
+    const el = document.getElementById('log-' + id);
+    el.classList.toggle('open');
+  }
+
+  function switchTab(id, tab, el) {
+    const card = el.closest('.log-card');
+    card.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    card.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById(tab + '-' + id).classList.add('active');
+  }
+
+  async function clearLogs() {
+    const token = document.getElementById('tokenInput').value.trim();
+    if (!confirm('Apagar todos os logs?')) return;
+    await fetch(`/webhook/spy/logs?token=${encodeURIComponent(token)}`, { method: 'DELETE' });
+    loadLogs();
+  }
+
+  function autoRefresh() {
+    if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; setStatus('Auto-refresh pausado.', ''); return; }
+    loadLogs();
+    refreshTimer = setInterval(loadLogs, 10000);
+    setStatus('⏱ Auto-refresh ativo (10s)...', 'ok');
+  }
+
+  function setStatus(msg, cls) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = cls;
+  }
+
+  function flattenObj(obj, prefix = '') {
+    const result = [];
+    for (const k in obj) {
+      const key = prefix ? prefix + '.' + k : k;
+      if (obj[k] !== null && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
+        result.push(...flattenObj(obj[k], key));
+      } else {
+        result.push({ key, val: Array.isArray(obj[k]) ? JSON.stringify(obj[k]) : obj[k] });
+      }
+    }
+    return result;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function syntaxHL(str) {
+    return escHtml(str)
+      .replace(/"([^"]+)":/g, '<span style="color:#c792ea">"$1"</span>:')
+      .replace(/: "([^"]*)"/g, ': <span style="color:#c3e88d">"$1"</span>')
+      .replace(/: (\d+\.?\d*)/g, ': <span style="color:#f78c6c">$1</span>')
+      .replace(/: (true|false|null)/g, ': <span style="color:#89ddff">$1</span>');
+  }
+</script>
+</body>
+</html>
