@@ -204,7 +204,6 @@ const KWAI_WPP_TEXT  = 'Olá! Gostaria de saber mais sobre o tratamento.';
 const DEFAULT_VALUE  = 497;
 const MAX_NUMBERS    = 20;
 
-// Gera Lead ID curto e único — ex: A3K9F2
 function gerarLeadId() {
   var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   var id = '';
@@ -221,7 +220,6 @@ function kwaiPool() {
 
 async function initKwaiDB() {
   const pool = kwaiPool();
-  // Cria tabela base se nao existir
   await pool.query(`
     CREATE TABLE IF NOT EXISTS kwai_leads (
       id         SERIAL PRIMARY KEY,
@@ -238,7 +236,6 @@ async function initKwaiDB() {
     );
   `);
 
-  // Migrations — adiciona colunas novas com seguranca
   var migrations = [
     "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS lead_id VARCHAR(20)",
     "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS kwai_click_id VARCHAR(255)",
@@ -291,13 +288,9 @@ async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
     pixel_id: pixelId,
     events: [eventObj]
   };
-  // Tenta endpoint oficial de conversão server-side primeiro
-  // Fonte: SDK oficial kwai-marketing-api (ad.partner.gifshow.com/track/activate)
   var results = [];
 
-  // Método 1: Endpoint oficial de tracking server-side
   try {
-    // Tenta múltiplos endpoints para encontrar o que registra no pixel web
     var activateParams = new URLSearchParams();
     if (clickId) activateParams.append('callback', clickId);
     activateParams.append('pixel_id', pixelId);
@@ -319,7 +312,6 @@ async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
     results.push({ method: 'activate', ok: false, error: e1.message });
   }
 
-  // Método 2: Simulação completa de browser mobile
   try {
     var mobilePayload = {
       pixel_id: pixelId,
@@ -386,18 +378,12 @@ async function kwaiDispararTodos(eventName, clickId, extra) {
   }));
 }
 
-// ── Gerar Lead ID — chamado pela pretzel ao carregar ─────────────────────────
 app.post('/kwai/lead/criar', async function(req, res) {
   const pool = kwaiPool();
   try {
-    const {
-      kwai_click_id, utm_source, utm_campaign, utm_adset, utm_ad, session_id
-    } = req.body;
-
+    const { kwai_click_id, utm_source, utm_campaign, utm_adset, utm_ad, session_id } = req.body;
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || '';
     const user_agent = req.headers['user-agent'] || '';
-
-    // Gera Lead ID único com retry em caso de colisão
     let lead_id, attempts = 0;
     while (attempts < 10) {
       lead_id = gerarLeadId();
@@ -405,14 +391,12 @@ app.post('/kwai/lead/criar', async function(req, res) {
       if (!exists.rows.length) break;
       attempts++;
     }
-
     const result = await pool.query(
       `INSERT INTO kwai_leads 
         (lead_id, kwai_click_id, utm_source, utm_campaign, utm_adset, utm_ad, ip, user_agent, session_id, status)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'visitou') RETURNING id, lead_id`,
       [lead_id, kwai_click_id||null, utm_source||null, utm_campaign||null, utm_adset||null, utm_ad||null, ip, user_agent, session_id||null]
     );
-
     console.log('[Kwai] Lead criado: ' + lead_id + ' click_id=' + kwai_click_id);
     res.json({ ok: true, lead_id: lead_id });
   } catch(err) {
@@ -423,14 +407,11 @@ app.post('/kwai/lead/criar', async function(req, res) {
   }
 });
 
-// ── Redirect do botão WhatsApp ────────────────────────────────────────────────
 app.get('/kwai/ir', async function(req, res) {
   const lead_id     = req.query.lid         || null;
   const phonesParam = req.query.phones      || null;
   const phoneParam  = req.query.phone       || null;
-  const campaign_id = req.query.campaign_id || null;
 
-  // Determina número — randomiza se múltiplos
   let number = null;
   if (phonesParam) {
     const list = phonesParam.split(',').map(function(n) { return n.trim().replace(/\D/g,''); }).filter(Boolean);
@@ -447,17 +428,11 @@ app.get('/kwai/ir', async function(req, res) {
 
   if (!number) return res.status(400).send('Nenhum número configurado.');
 
-  // Atualiza o lead com o clique e número de destino
   if (lead_id) {
     const pool = kwaiPool();
     try {
       await pool.query(
-        `UPDATE kwai_leads SET 
-          status = 'clicou', 
-          wpp_number = $1, 
-          clicked_at = NOW(),
-          clicks = COALESCE(clicks, 0) + 1
-         WHERE lead_id = $2`,
+        `UPDATE kwai_leads SET status = 'clicou', wpp_number = $1, clicked_at = NOW(), clicks = COALESCE(clicks, 0) + 1 WHERE lead_id = $2`,
         [number, lead_id]
       );
       console.log('[Kwai] Clique registrado: lid=' + lead_id + ' wpp=' + number);
@@ -468,7 +443,6 @@ app.get('/kwai/ir', async function(req, res) {
     }
   }
 
-  // Monta mensagem com o Lead ID
   var msg = KWAI_WPP_TEXT + (lead_id ? ' REF:' + lead_id : '');
   res.redirect(302,
     'https://api.whatsapp.com/send/?phone=' + number +
@@ -476,7 +450,6 @@ app.get('/kwai/ir', async function(req, res) {
   );
 });
 
-// ── CRUD Números ──────────────────────────────────────────────────────────────
 app.get('/api/kwai/numbers', auth, async function(req, res) {
   const pool = kwaiPool();
   try {
@@ -509,15 +482,12 @@ app.delete('/api/kwai/numbers/:id', auth, async function(req, res) {
   finally { await pool.end(); }
 });
 
-// ── Buscar lead por REF ou telefone ──────────────────────────────────────────
 app.get('/api/kwai/lead/:query', auth, async function(req, res) {
   const pool = kwaiPool();
   try {
     const q = req.params.query.replace(/\s/g,'').toUpperCase();
     const result = await pool.query(
-      `SELECT * FROM kwai_leads 
-       WHERE lead_id = $1 OR phone LIKE $2 OR lead_id LIKE $2
-       ORDER BY created_at DESC LIMIT 10`,
+      `SELECT * FROM kwai_leads WHERE lead_id = $1 OR phone LIKE $2 OR lead_id LIKE $2 ORDER BY created_at DESC LIMIT 10`,
       [q, '%' + q + '%']
     );
     res.json({ leads: result.rows });
@@ -525,7 +495,6 @@ app.get('/api/kwai/lead/:query', auth, async function(req, res) {
   finally { await pool.end(); }
 });
 
-// ── Associar telefone do lead ─────────────────────────────────────────────────
 app.post('/api/kwai/lead/:lead_id/phone', auth, async function(req, res) {
   const pool = kwaiPool();
   try {
@@ -535,13 +504,11 @@ app.post('/api/kwai/lead/:lead_id/phone', auth, async function(req, res) {
   finally { await pool.end(); }
 });
 
-// ── Disparar Purchase ─────────────────────────────────────────────────────────
 app.post('/api/kwai/purchase', auth, async function(req, res) {
   const pool = kwaiPool();
   try {
     const { lead_id, ref, phone, value } = req.body;
     let lead;
-
     const searchId = (ref || lead_id || '').toUpperCase().replace('REF:','').trim();
     if (searchId) {
       const r = await pool.query('SELECT * FROM kwai_leads WHERE lead_id = $1', [searchId]);
@@ -552,24 +519,19 @@ app.post('/api/kwai/purchase', auth, async function(req, res) {
       const r = await pool.query('SELECT * FROM kwai_leads WHERE phone LIKE $1 ORDER BY created_at DESC LIMIT 1', ['%' + clean + '%']);
       lead = r.rows[0];
     }
-
     if (!lead) return res.status(404).json({ error: 'Lead não encontrado. Verifique o REF ou telefone.' });
     if (lead.status === 'purchased') return res.status(400).json({ error: 'Purchase já disparado para este lead' });
-
     const purchaseValue = parseFloat(value) || DEFAULT_VALUE;
     const results = await kwaiDispararTodos('PURCHASE', lead.kwai_click_id, { phone: lead.phone, value: purchaseValue });
-
     await pool.query(
       'UPDATE kwai_leads SET status=$1, purchased_at=NOW(), purchase_value=$2, kwai_results=$3 WHERE id=$4',
       ['purchased', purchaseValue, JSON.stringify(results), lead.id]
     );
-
     res.json({ success: true, lead: lead, results: results });
   } catch(err) { res.status(500).json({ error: err.message }); }
   finally { await pool.end(); }
 });
 
-// ── Listar leads ──────────────────────────────────────────────────────────────
 app.get('/api/kwai/leads', auth, async function(req, res) {
   const pool = kwaiPool();
   try {
@@ -591,7 +553,6 @@ app.get('/api/kwai/leads', auth, async function(req, res) {
   finally { await pool.end(); }
 });
 
-// ── Stats ─────────────────────────────────────────────────────────────────────
 app.get('/api/kwai/stats', auth, async function(req, res) {
   const pool = kwaiPool();
   try {
@@ -618,10 +579,98 @@ app.get('/api/kwai/stats', auth, async function(req, res) {
 initKwaiDB().catch(console.error);
 
 // =============================================================================
+// MÓDULO WEBHOOK SPY — captura payload da Five Delivery
+// =============================================================================
+
+function spyPool() {
+  const { Pool } = require('pg');
+  return new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+}
+
+async function initSpyDB() {
+  const pool = spyPool();
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS webhook_spy_logs (
+        id          SERIAL PRIMARY KEY,
+        received_at TIMESTAMP DEFAULT NOW(),
+        headers     TEXT,
+        body        TEXT,
+        ip          VARCHAR(100)
+      )
+    `);
+    console.log('[Spy] Tabela pronta');
+  } catch(e) {
+    console.error('[Spy] Erro ao criar tabela:', e.message);
+  } finally {
+    await pool.end();
+  }
+}
+
+// POST /webhook/spy — Five Delivery aponta aqui
+app.post('/webhook/spy', async function(req, res) {
+  const pool = spyPool();
+  try {
+    const headers = JSON.stringify(req.headers, null, 2);
+    const body    = JSON.stringify(req.body,    null, 2);
+    const ip      = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    await pool.query(
+      'INSERT INTO webhook_spy_logs (headers, body, ip) VALUES ($1, $2, $3)',
+      [headers, body, ip]
+    );
+    console.log('[Spy] Webhook recebido de ' + ip);
+    res.status(200).json({ ok: true });
+  } catch(err) {
+    console.error('[Spy] Erro:', err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    await pool.end();
+  }
+});
+
+// GET /api/spy/logs — retorna logs (protegido por auth_token via query param)
+app.get('/api/spy/logs', async function(req, res) {
+  const pool = spyPool();
+  try {
+    const token = req.query.token || req.headers['x-auth-token'];
+    const cfg = await db.getConfig();
+    if (!cfg || token !== cfg.auth_token) return res.status(401).json({ error: 'Token inválido' });
+    const result = await pool.query(
+      'SELECT * FROM webhook_spy_logs ORDER BY id DESC LIMIT 30'
+    );
+    res.json({ total: result.rows.length, logs: result.rows });
+  } catch(err) {
+    res.status(500).json({ error: err.message });
+  } finally {
+    await pool.end();
+  }
+});
+
+// DELETE /api/spy/logs — limpa todos os logs
+app.delete('/api/spy/logs', async function(req, res) {
+  const pool = spyPool();
+  try {
+    const token = req.query.token || req.headers['x-auth-token'];
+    const cfg = await db.getConfig();
+    if (!cfg || token !== cfg.auth_token) return res.status(401).json({ error: 'Token inválido' });
+    await pool.query('DELETE FROM webhook_spy_logs');
+    res.json({ ok: true });
+  } catch(err) {
+    res.status(500).json({ error: err.message });
+  } finally {
+    await pool.end();
+  }
+});
+
+initSpyDB().catch(console.error);
+
+// =============================================================================
 // ROTAS DE PÁGINAS
 // =============================================================================
 app.get('/kwai', function(req, res) { res.sendFile(path.join(__dirname, '../public/kwai.html')); });
 app.get('/kwai.html', function(req, res) { res.sendFile(path.join(__dirname, '../public/kwai.html')); });
+app.get('/spy', function(req, res) { res.sendFile(path.join(__dirname, '../public/spy.html')); });
+app.get('/spy.html', function(req, res) { res.sendFile(path.join(__dirname, '../public/spy.html')); });
 
 // CATCH-ALL — sempre no final
 app.get('*', function(req, res) { res.sendFile(path.join(__dirname, '../public/index.html')); });
