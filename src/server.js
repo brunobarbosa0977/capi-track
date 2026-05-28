@@ -116,7 +116,7 @@ async function initSpyDB() {
   }
 }
 
-// POST /webhook/spy — Five Delivery aponta aqui
+// POST /webhook/spy — captura payload bruto da Five Delivery (para debug)
 app.post('/webhook/spy', async function(req, res) {
   const pool = spyPool();
   try {
@@ -137,16 +137,14 @@ app.post('/webhook/spy', async function(req, res) {
   }
 });
 
-// GET /api/spy/logs — retorna logs (protegido por auth_token via query param)
+// GET /api/spy/logs
 app.get('/api/spy/logs', async function(req, res) {
   const pool = spyPool();
   try {
     const token = req.query.token || req.headers['x-auth-token'];
     const cfg = await db.getConfig();
     if (!cfg || token !== cfg.auth_token) return res.status(401).json({ error: 'Token inválido' });
-    const result = await pool.query(
-      'SELECT * FROM webhook_spy_logs ORDER BY id DESC LIMIT 30'
-    );
+    const result = await pool.query('SELECT * FROM webhook_spy_logs ORDER BY id DESC LIMIT 30');
     res.json({ total: result.rows.length, logs: result.rows });
   } catch(err) {
     res.status(500).json({ error: err.message });
@@ -155,7 +153,7 @@ app.get('/api/spy/logs', async function(req, res) {
   }
 });
 
-// DELETE /api/spy/logs — limpa todos os logs
+// DELETE /api/spy/logs
 app.delete('/api/spy/logs', async function(req, res) {
   const pool = spyPool();
   try {
@@ -173,7 +171,106 @@ app.delete('/api/spy/logs', async function(req, res) {
 
 initSpyDB().catch(console.error);
 
-// ─── WEBHOOK (META) ───────────────────────────────────────────────────────────
+// =============================================================================
+// WEBHOOK FIVE DELIVERY — disparo automático de Purchase na Meta CAPI
+// Deve vir ANTES de /webhook/:token
+// =============================================================================
+
+// Extrai campos do payload da Five Delivery e normaliza para o formato CAPI
+function parseFiveDelivery(body) {
+  const c = body.customer || {};
+  const addr = c.address || {};
+  const offer = (body.product || {}).offer || {};
+
+  // Telefone: remove +55, espaços e caracteres não numéricos
+  let phone = String(c.phoneNumber || '').replace(/\D/g, '');
+  if (phone.startsWith('55') && phone.length >= 12) phone = phone.slice(2);
+
+  // CEP: apenas dígitos
+  const cep = String(addr.zipCode || '').replace(/\D/g, '');
+
+  // Valor: usa product.offer.price (já em reais conforme payload)
+  const value = parseFloat(offer.price || 0) || 0;
+
+  // Gênero: não vem no payload, deixa vazio
+  return {
+    name:   String(c.name  || '').trim(),
+    phone:  phone,
+    email:  String(c.mail  || '').trim(),
+    cep:    cep,
+    value:  value,
+    gender: ''
+  };
+}
+
+// POST /webhook/five-delivery/:token
+app.post('/webhook/five-delivery/:token', async function(req, res) {
+  try {
+    const cfg = await db.getConfig();
+    if (!cfg || req.params.token !== cfg.webhook_token) {
+      return res.status(403).json({ error: 'Token inválido' });
+    }
+
+    const body = req.body;
+
+    // Só processa evento de criação de pedido
+    const evento = String(body.event || body.eventStatus || '').toUpperCase();
+    if (!evento.includes('ORDER_CREATE') && !evento.includes('PEDIDO CRIADO') && !evento.includes('CREATE')) {
+      console.log('[FiveDelivery] Evento ignorado:', body.event || body.eventStatus);
+      return res.status(200).json({ ok: true, ignored: true, event: body.event || body.eventStatus });
+    }
+
+    const lead = parseFiveDelivery(body);
+
+    if (!lead.phone) {
+      console.warn('[FiveDelivery] Pedido sem telefone, ignorado. orderId:', body.orderId);
+      return res.status(200).json({ ok: true, ignored: true, reason: 'sem telefone' });
+    }
+
+    // Usa o primeiro pixel cadastrado
+    const pixels = await db.getPixels();
+    if (!pixels || !pixels.length) {
+      return res.status(400).json({ error: 'Nenhum pixel configurado no Infinity Track' });
+    }
+    const pixelCfg = pixels[0];
+
+    console.log('[FiveDelivery] Disparando Purchase → ' + lead.phone + ' | R$' + lead.value + ' | orderId: ' + body.orderId);
+
+    const result = await metaApi.sendPurchase(pixelCfg, lead);
+
+    await db.insertEvent({
+      pixel_id:   pixelCfg.id,
+      pixel_name: pixelCfg.name,
+      name:       lead.name,
+      phone:      lead.phone,
+      email:      lead.email,
+      value:      lead.value,
+      gender:     lead.gender,
+      cep:        lead.cep,
+      status:     result.success ? 'sent' : 'error',
+      error_msg:  result.error || null,
+      source:     'five_delivery'
+    });
+
+    console.log('[FiveDelivery] Resultado:', result.success ? '✅ enviado' : '❌ erro: ' + result.error);
+    res.status(200).json({ ok: true, success: result.success, phone: lead.phone, value: lead.value });
+
+  } catch(e) {
+    console.error('[FiveDelivery] Erro:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/five-delivery/webhook-url — retorna a URL formatada para colar na Five Delivery
+app.get('/api/five-delivery/webhook-url', auth, async function(req, res) {
+  try {
+    const cfg = await db.getConfig();
+    const base = process.env.BASE_URL || ('http://localhost:' + PORT);
+    res.json({ url: base + '/webhook/five-delivery/' + cfg.webhook_token });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── WEBHOOK (META) — genérico, deve vir DEPOIS dos webhooks específicos ──────
 app.get('/api/webhook-url', auth, async function(req, res) {
   try {
     const cfg = await db.getConfig();
@@ -293,9 +390,7 @@ const MAX_NUMBERS    = 20;
 function gerarLeadId() {
   var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   var id = '';
-  for (var i = 0; i < 6; i++) {
-    id += chars[Math.floor(Math.random() * chars.length)];
-  }
+  for (var i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
   return id;
 }
 
@@ -321,7 +416,6 @@ async function initKwaiDB() {
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
-
   var migrations = [
     "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS lead_id VARCHAR(20)",
     "ALTER TABLE kwai_leads ADD COLUMN IF NOT EXISTS kwai_click_id VARCHAR(255)",
@@ -352,8 +446,8 @@ async function initKwaiDB() {
 }
 
 async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
-  const eventId      = uuidv4();
-  const kwaiEventId  = KWAI_EVENT_IDS[pixelId] || null;
+  const eventId     = uuidv4();
+  const kwaiEventId = KWAI_EVENT_IDS[pixelId] || null;
   const userData = {};
   if (clickId)              userData.click_id = clickId;
   if (extra && extra.phone) userData.ph = extra.phone.replace(/\D/g, '');
@@ -362,12 +456,7 @@ async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
     event_id:    eventId,
     event_time:  Math.floor(Date.now() / 1000),
     user_data:   userData,
-    custom_data: {
-      value:        (extra && extra.value)    || DEFAULT_VALUE,
-      currency:     'BRL',
-      content_name: 'Glivia',
-      content_id:   'glivia'
-    }
+    custom_data: { value: (extra && extra.value) || DEFAULT_VALUE, currency: 'BRL', content_name: 'Glivia', content_id: 'glivia' }
   };
   if (kwaiEventId) eventObj.event_type_id = kwaiEventId;
   var results = [];
@@ -389,7 +478,6 @@ async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
     console.log('[Kwai Activate ' + pixelId + '] → ' + r1.status + ': ' + b1);
     results.push({ method: 'activate', ok: r1.ok, status: r1.status, body: b1 });
   } catch(e1) {
-    console.error('[Kwai Activate] Erro:', e1.message);
     results.push({ method: 'activate', ok: false, error: e1.message });
   }
 
@@ -397,66 +485,39 @@ async function kwaiDispararEvento(eventName, clickId, pixelId, extra) {
     var mobilePayload = {
       pixel_id: pixelId,
       events: [{
-        event_name: eventName,
-        event_id:   eventId,
-        event_time: Math.floor(Date.now() / 1000),
-        user_data: Object.assign({},
-          clickId ? { click_id: clickId } : {},
-          (extra && extra.phone) ? { ph: extra.phone.replace(/\D/g, '') } : {}
-        ),
-        custom_data: {
-          value:        (extra && extra.value) || DEFAULT_VALUE,
-          currency:     'BRL',
-          content_name: 'Glivia',
-          content_id:   'glivia',
-          content_type: 'product'
-        },
-        page: {
-          url:      'https://oficialvitalife.shop/obrigado',
-          referrer: 'https://oficialvitalife.shop/life/'
-        }
+        event_name: eventName, event_id: eventId, event_time: Math.floor(Date.now() / 1000),
+        user_data: Object.assign({}, clickId ? { click_id: clickId } : {}, (extra && extra.phone) ? { ph: extra.phone.replace(/\D/g, '') } : {}),
+        custom_data: { value: (extra && extra.value) || DEFAULT_VALUE, currency: 'BRL', content_name: 'Glivia', content_id: 'glivia', content_type: 'product' },
+        page: { url: 'https://oficialvitalife.shop/obrigado', referrer: 'https://oficialvitalife.shop/life/' }
       }]
     };
     var ip1 = '177.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255) + '.' + Math.floor(Math.random()*255);
-    var r2 = await fetch(
-      'https://s21-def.ap4r.com/rest/n/v1/pixel/batch?sdkid=' + pixelId + '&lib=kwaiq',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type':       'application/json',
-          'Accept':             'application/json, text/plain, */*',
-          'Accept-Language':    'pt-BR,pt;q=0.9',
-          'Origin':             'https://oficialvitalife.shop',
-          'Referer':            'https://oficialvitalife.shop/obrigado',
-          'User-Agent':         'Mozilla/5.0 (Linux; Android 13; SM-A536B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
-          'sec-ch-ua':          '"Chromium";v="112","Google Chrome";v="112","Not:A-Brand";v="99"',
-          'sec-ch-ua-mobile':   '?1',
-          'sec-ch-ua-platform': '"Android"',
-          'sec-fetch-dest':     'empty',
-          'sec-fetch-mode':     'cors',
-          'sec-fetch-site':     'cross-site',
-          'x-forwarded-for':    ip1,
-          'x-real-ip':          ip1
-        },
-        body: JSON.stringify(mobilePayload)
-      }
-    );
+    var r2 = await fetch('https://s21-def.ap4r.com/rest/n/v1/pixel/batch?sdkid=' + pixelId + '&lib=kwaiq', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', 'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'pt-BR,pt;q=0.9', 'Origin': 'https://oficialvitalife.shop',
+        'Referer': 'https://oficialvitalife.shop/obrigado',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-A536B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
+        'sec-ch-ua': '"Chromium";v="112","Google Chrome";v="112","Not:A-Brand";v="99"',
+        'sec-ch-ua-mobile': '?1', 'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'empty', 'sec-fetch-mode': 'cors', 'sec-fetch-site': 'cross-site',
+        'x-forwarded-for': ip1, 'x-real-ip': ip1
+      },
+      body: JSON.stringify(mobilePayload)
+    });
     var b2 = await r2.text();
     console.log('[Kwai Mobile ' + pixelId + '] ' + eventName + ' → ' + r2.status + ': ' + b2);
     results.push({ method: 'mobile', ok: r2.ok, status: r2.status, body: b2, event_id: eventId });
   } catch(err) {
-    console.error('[Kwai Mobile ' + pixelId + '] Erro:', err.message);
     results.push({ method: 'mobile', ok: false, error: err.message, event_id: eventId });
   }
 
-  var success = results.some(function(r) { return r.ok; });
-  return { ok: success, results: results, event_id: eventId };
+  return { ok: results.some(function(r) { return r.ok; }), results: results, event_id: eventId };
 }
 
 async function kwaiDispararTodos(eventName, clickId, extra) {
-  return Promise.all(KWAI_PIXELS.map(function(pid) {
-    return kwaiDispararEvento(eventName, clickId, pid, extra);
-  }));
+  return Promise.all(KWAI_PIXELS.map(function(pid) { return kwaiDispararEvento(eventName, clickId, pid, extra); }));
 }
 
 app.post('/kwai/lead/criar', async function(req, res) {
@@ -473,25 +534,19 @@ app.post('/kwai/lead/criar', async function(req, res) {
       attempts++;
     }
     const result = await pool.query(
-      `INSERT INTO kwai_leads
-        (lead_id, kwai_click_id, utm_source, utm_campaign, utm_adset, utm_ad, ip, user_agent, session_id, status)
+      `INSERT INTO kwai_leads (lead_id, kwai_click_id, utm_source, utm_campaign, utm_adset, utm_ad, ip, user_agent, session_id, status)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'visitou') RETURNING id, lead_id`,
       [lead_id, kwai_click_id||null, utm_source||null, utm_campaign||null, utm_adset||null, utm_ad||null, ip, user_agent, session_id||null]
     );
-    console.log('[Kwai] Lead criado: ' + lead_id + ' click_id=' + kwai_click_id);
+    console.log('[Kwai] Lead criado: ' + lead_id);
     res.json({ ok: true, lead_id: lead_id });
   } catch(err) {
-    console.error('[Kwai] Erro ao criar lead:', err.message);
     res.status(500).json({ error: err.message });
-  } finally {
-    await pool.end();
-  }
+  } finally { await pool.end(); }
 });
 
 app.get('/kwai/ir', async function(req, res) {
-  const lead_id     = req.query.lid    || null;
-  const phonesParam = req.query.phones || null;
-  const phoneParam  = req.query.phone  || null;
+  const lead_id = req.query.lid || null, phonesParam = req.query.phones || null, phoneParam = req.query.phone || null;
   let number = null;
   if (phonesParam) {
     const list = phonesParam.split(',').map(function(n) { return n.trim().replace(/\D/g,''); }).filter(Boolean);
@@ -500,40 +555,22 @@ app.get('/kwai/ir', async function(req, res) {
     number = phoneParam.replace(/\D/g,'');
   } else {
     const pool2 = kwaiPool();
-    try {
-      const r = await pool2.query("SELECT number FROM kwai_numbers WHERE active = TRUE ORDER BY id LIMIT 1");
-      if (r.rows.length) number = r.rows[0].number;
-    } catch(e) {} finally { await pool2.end(); }
+    try { const r = await pool2.query("SELECT number FROM kwai_numbers WHERE active = TRUE ORDER BY id LIMIT 1"); if (r.rows.length) number = r.rows[0].number; }
+    catch(e) {} finally { await pool2.end(); }
   }
   if (!number) return res.status(400).send('Nenhum número configurado.');
   if (lead_id) {
     const pool = kwaiPool();
-    try {
-      await pool.query(
-        `UPDATE kwai_leads SET status = 'clicou', wpp_number = $1, clicked_at = NOW(), clicks = COALESCE(clicks, 0) + 1 WHERE lead_id = $2`,
-        [number, lead_id]
-      );
-      console.log('[Kwai] Clique registrado: lid=' + lead_id + ' wpp=' + number);
-    } catch(err) {
-      console.error('[Kwai] Erro ao registrar clique:', err.message);
-    } finally {
-      await pool.end();
-    }
+    try { await pool.query(`UPDATE kwai_leads SET status='clicou', wpp_number=$1, clicked_at=NOW(), clicks=COALESCE(clicks,0)+1 WHERE lead_id=$2`, [number, lead_id]); }
+    catch(err) {} finally { await pool.end(); }
   }
-  var msg = KWAI_WPP_TEXT + (lead_id ? ' REF:' + lead_id : '');
-  res.redirect(302,
-    'https://api.whatsapp.com/send/?phone=' + number +
-    '&text=' + encodeURIComponent(msg) + '&type=phone_number&app_absent=0'
-  );
+  res.redirect(302, 'https://api.whatsapp.com/send/?phone=' + number + '&text=' + encodeURIComponent(KWAI_WPP_TEXT + (lead_id ? ' REF:' + lead_id : '')) + '&type=phone_number&app_absent=0');
 });
 
 app.get('/api/kwai/numbers', auth, async function(req, res) {
   const pool = kwaiPool();
-  try {
-    const r = await pool.query('SELECT * FROM kwai_numbers ORDER BY id');
-    res.json({ numbers: r.rows });
-  } catch(err) { res.status(500).json({ error: err.message }); }
-  finally { await pool.end(); }
+  try { const r = await pool.query('SELECT * FROM kwai_numbers ORDER BY id'); res.json({ numbers: r.rows }); }
+  catch(err) { res.status(500).json({ error: err.message }); } finally { await pool.end(); }
 });
 
 app.post('/api/kwai/numbers', auth, async function(req, res) {
@@ -543,42 +580,31 @@ app.post('/api/kwai/numbers', auth, async function(req, res) {
     if (!number) return res.status(400).json({ error: 'Número obrigatório' });
     const clean = number.replace(/\D/g,'');
     const count = await pool.query('SELECT COUNT(*) FROM kwai_numbers');
-    if (parseInt(count.rows[0].count) >= MAX_NUMBERS) return res.status(400).json({ error: 'Limite de ' + MAX_NUMBERS + ' números atingido' });
+    if (parseInt(count.rows[0].count) >= MAX_NUMBERS) return res.status(400).json({ error: 'Limite atingido' });
     const r = await pool.query('INSERT INTO kwai_numbers (label, number) VALUES ($1,$2) RETURNING *', [label||clean, clean]);
     res.json({ ok: true, number: r.rows[0] });
-  } catch(err) { res.status(500).json({ error: err.message }); }
-  finally { await pool.end(); }
+  } catch(err) { res.status(500).json({ error: err.message }); } finally { await pool.end(); }
 });
 
 app.delete('/api/kwai/numbers/:id', auth, async function(req, res) {
   const pool = kwaiPool();
-  try {
-    await pool.query('DELETE FROM kwai_numbers WHERE id = $1', [req.params.id]);
-    res.json({ ok: true });
-  } catch(err) { res.status(500).json({ error: err.message }); }
-  finally { await pool.end(); }
+  try { await pool.query('DELETE FROM kwai_numbers WHERE id = $1', [req.params.id]); res.json({ ok: true }); }
+  catch(err) { res.status(500).json({ error: err.message }); } finally { await pool.end(); }
 });
 
 app.get('/api/kwai/lead/:query', auth, async function(req, res) {
   const pool = kwaiPool();
   try {
     const q = req.params.query.replace(/\s/g,'').toUpperCase();
-    const result = await pool.query(
-      `SELECT * FROM kwai_leads WHERE lead_id = $1 OR phone LIKE $2 OR lead_id LIKE $2 ORDER BY created_at DESC LIMIT 10`,
-      [q, '%' + q + '%']
-    );
+    const result = await pool.query(`SELECT * FROM kwai_leads WHERE lead_id=$1 OR phone LIKE $2 ORDER BY created_at DESC LIMIT 10`, [q, '%'+q+'%']);
     res.json({ leads: result.rows });
-  } catch(err) { res.status(500).json({ error: err.message }); }
-  finally { await pool.end(); }
+  } catch(err) { res.status(500).json({ error: err.message }); } finally { await pool.end(); }
 });
 
 app.post('/api/kwai/lead/:lead_id/phone', auth, async function(req, res) {
   const pool = kwaiPool();
-  try {
-    await pool.query('UPDATE kwai_leads SET phone = $1 WHERE lead_id = $2', [req.body.phone.replace(/\D/g,''), req.params.lead_id]);
-    res.json({ ok: true });
-  } catch(err) { res.status(500).json({ error: err.message }); }
-  finally { await pool.end(); }
+  try { await pool.query('UPDATE kwai_leads SET phone=$1 WHERE lead_id=$2', [req.body.phone.replace(/\D/g,''), req.params.lead_id]); res.json({ ok: true }); }
+  catch(err) { res.status(500).json({ error: err.message }); } finally { await pool.end(); }
 });
 
 app.post('/api/kwai/purchase', auth, async function(req, res) {
@@ -587,47 +613,28 @@ app.post('/api/kwai/purchase', auth, async function(req, res) {
     const { lead_id, ref, phone, value } = req.body;
     let lead;
     const searchId = (ref || lead_id || '').toUpperCase().replace('REF:','').trim();
-    if (searchId) {
-      const r = await pool.query('SELECT * FROM kwai_leads WHERE lead_id = $1', [searchId]);
-      lead = r.rows[0];
-    }
-    if (!lead && phone) {
-      const clean = phone.replace(/\D/g,'');
-      const r = await pool.query('SELECT * FROM kwai_leads WHERE phone LIKE $1 ORDER BY created_at DESC LIMIT 1', ['%' + clean + '%']);
-      lead = r.rows[0];
-    }
-    if (!lead) return res.status(404).json({ error: 'Lead não encontrado. Verifique o REF ou telefone.' });
-    if (lead.status === 'purchased') return res.status(400).json({ error: 'Purchase já disparado para este lead' });
+    if (searchId) { const r = await pool.query('SELECT * FROM kwai_leads WHERE lead_id=$1', [searchId]); lead = r.rows[0]; }
+    if (!lead && phone) { const r = await pool.query('SELECT * FROM kwai_leads WHERE phone LIKE $1 ORDER BY created_at DESC LIMIT 1', ['%'+phone.replace(/\D/g,'')+'%']); lead = r.rows[0]; }
+    if (!lead) return res.status(404).json({ error: 'Lead não encontrado.' });
+    if (lead.status === 'purchased') return res.status(400).json({ error: 'Purchase já disparado' });
     const purchaseValue = parseFloat(value) || DEFAULT_VALUE;
     const results = await kwaiDispararTodos('PURCHASE', lead.kwai_click_id, { phone: lead.phone, value: purchaseValue });
-    await pool.query(
-      'UPDATE kwai_leads SET status=$1, purchased_at=NOW(), purchase_value=$2, kwai_results=$3 WHERE id=$4',
-      ['purchased', purchaseValue, JSON.stringify(results), lead.id]
-    );
+    await pool.query('UPDATE kwai_leads SET status=$1, purchased_at=NOW(), purchase_value=$2, kwai_results=$3 WHERE id=$4', ['purchased', purchaseValue, JSON.stringify(results), lead.id]);
     res.json({ success: true, lead: lead, results: results });
-  } catch(err) { res.status(500).json({ error: err.message }); }
-  finally { await pool.end(); }
+  } catch(err) { res.status(500).json({ error: err.message }); } finally { await pool.end(); }
 });
 
 app.get('/api/kwai/leads', auth, async function(req, res) {
   const pool = kwaiPool();
   try {
-    const status = req.query.status;
-    const limit  = parseInt(req.query.limit) || 50;
-    const page   = parseInt(req.query.page)  || 1;
-    const offset = (page - 1) * limit;
-    let query = 'SELECT * FROM kwai_leads';
-    const params = [];
-    if (status) { query += ' WHERE status = $1'; params.push(status); }
+    const status = req.query.status, limit = parseInt(req.query.limit)||50, page = parseInt(req.query.page)||1, offset = (page-1)*limit;
+    let query = 'SELECT * FROM kwai_leads'; const params = [];
+    if (status) { query += ' WHERE status=$1'; params.push(status); }
     query += ' ORDER BY created_at DESC LIMIT ' + limit + ' OFFSET ' + offset;
-    const rows  = await pool.query(query, params);
-    const count = await pool.query(
-      status ? 'SELECT COUNT(*) FROM kwai_leads WHERE status=$1' : 'SELECT COUNT(*) FROM kwai_leads',
-      status ? [status] : []
-    );
+    const rows = await pool.query(query, params);
+    const count = await pool.query(status ? 'SELECT COUNT(*) FROM kwai_leads WHERE status=$1' : 'SELECT COUNT(*) FROM kwai_leads', status ? [status] : []);
     res.json({ leads: rows.rows, total: parseInt(count.rows[0].count), page: page });
-  } catch(err) { res.status(500).json({ error: err.message }); }
-  finally { await pool.end(); }
+  } catch(err) { res.status(500).json({ error: err.message }); } finally { await pool.end(); }
 });
 
 app.get('/api/kwai/stats', auth, async function(req, res) {
@@ -639,18 +646,12 @@ app.get('/api/kwai/stats', auth, async function(req, res) {
     const hoje      = await pool.query("SELECT COUNT(*) FROM kwai_leads WHERE created_at >= CURRENT_DATE");
     const vendasHj  = await pool.query("SELECT COUNT(*) FROM kwai_leads WHERE status='purchased' AND purchased_at >= CURRENT_DATE");
     res.json({
-      total_leads:     parseInt(total.rows[0].count),
-      total_cliques:   parseInt(clicou.rows[0].count),
-      total_purchases: parseInt(purchases.rows[0].count),
-      total_revenue:   parseFloat(purchases.rows[0].coalesce),
-      leads_hoje:      parseInt(hoje.rows[0].count),
-      vendas_hoje:     parseInt(vendasHj.rows[0].count),
-      taxa_conversao:  clicou.rows[0].count > 0
-        ? ((purchases.rows[0].count / clicou.rows[0].count) * 100).toFixed(1) + '%'
-        : '0%'
+      total_leads: parseInt(total.rows[0].count), total_cliques: parseInt(clicou.rows[0].count),
+      total_purchases: parseInt(purchases.rows[0].count), total_revenue: parseFloat(purchases.rows[0].coalesce),
+      leads_hoje: parseInt(hoje.rows[0].count), vendas_hoje: parseInt(vendasHj.rows[0].count),
+      taxa_conversao: clicou.rows[0].count > 0 ? ((purchases.rows[0].count / clicou.rows[0].count)*100).toFixed(1)+'%' : '0%'
     });
-  } catch(err) { res.status(500).json({ error: err.message }); }
-  finally { await pool.end(); }
+  } catch(err) { res.status(500).json({ error: err.message }); } finally { await pool.end(); }
 });
 
 initKwaiDB().catch(console.error);
