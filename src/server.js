@@ -176,13 +176,22 @@ initSpyDB().catch(console.error);
 // POST /webhook/datacrazy  { "phone": "5511999999999", "ctwa_clid": "ARAk..." }
 // =============================================================================
 
-// Aceita GET e POST para diagnóstico — loga tudo que chega
+// POST /webhook/datacrazy?access_token=TOKEN
 app.all('/webhook/datacrazy', async function(req, res) {
   try {
+    const DATACRAZY_TOKEN = process.env.DATACRAZY_TOKEN || '49a96241d6c5795f5ce5e82d74018a7ee42b43e701d755760db0f4046541c33a';
+
+    // Aceita token via query string, header ou body
+    const token = req.query.access_token || req.headers['x-access-token'] || (req.body && req.body.access_token);
+
     console.log('[Datacrazy] method:', req.method);
-    console.log('[Datacrazy] headers:', JSON.stringify(req.headers));
     console.log('[Datacrazy] body:', JSON.stringify(req.body));
     console.log('[Datacrazy] query:', JSON.stringify(req.query));
+
+    if (token && token !== DATACRAZY_TOKEN) {
+      console.log('[Datacrazy] Token inválido');
+      return res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'invalid_token' } });
+    }
 
     const { phone, ctwa_clid } = req.body || {};
 
@@ -201,7 +210,7 @@ app.all('/webhook/datacrazy', async function(req, res) {
     res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'saved' } });
   } catch(e) {
     console.error('[Datacrazy] Erro:', e.message);
-    res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'saved' } });
+    res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'error' } });
   }
 });
 
