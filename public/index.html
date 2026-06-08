@@ -201,6 +201,10 @@ tr:hover td{background:rgba(255,255,255,0.02);}
             <div class="FG"><label>CEP</label><input type="text" id="send-cep" placeholder="74000000"/></div>
           </div>
           <div class="FR">
+            <div class="FG"><label>Cidade</label><input type="text" id="send-city" placeholder="Goiânia"/></div>
+            <div class="FG"><label>Estado (UF)</label><input type="text" id="send-state" placeholder="GO" maxlength="2"/></div>
+          </div>
+          <div class="FR">
             <div class="FG"><label>E-mail (opcional)</label><input type="email" id="send-email" placeholder="email@cliente.com"/></div>
             <div class="FG"><label>Valor (R$) *</label><input type="number" id="send-value" placeholder="197.00" step="0.01"/></div>
           </div>
@@ -209,7 +213,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
       </div>
       <div id="tab-bulk" style="display:none">
         <div class="CD" style="max-width:660px">
-          <div class="AL AI show" style="margin-bottom:20px">Colunas: nome, telefone, valor, genero, cep (email opcional). Genero: M ou F.</div>
+          <div class="AL AI show" style="margin-bottom:20px">Colunas: nome, telefone, valor, genero, cep, cidade, estado (email opcional). Genero: M ou F.</div>
           <div class="AL AS" id="bulk-success"></div>
           <div class="AL AE" id="bulk-error"></div>
           <div class="FG">
@@ -314,7 +318,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
           <p style="font-size:12px;color:var(--mut);margin-bottom:4px">Integre com N8n, Make ou Manychat.</p>
           <div class="WB" id="webhook-url">Carregando...<button class="CB" onclick="copyWebhook()">Copiar</button></div>
           <div style="margin-top:16px;font-size:12px;color:var(--mut);font-weight:500;margin-bottom:6px">Formato POST JSON:</div>
-          <div class="PB">{"name":"Joao","phone":"5562999999999",<br>"value":197,"gender":"M","cep":"74000000",<br>"pixel_id":"ID_DO_PIXEL"}</div>
+          <div class="PB">{"name":"Joao","phone":"5562999999999",<br>"value":197,"gender":"M","cep":"74000000",<br>"city":"Goiânia","state":"GO",<br>"pixel_id":"ID_DO_PIXEL"}</div>
         </div>
       </div>
     </div>
@@ -509,13 +513,15 @@ function doSend() {
   hideAlerts(["send-success", "send-error"]);
   if (!pixel_id) { showAlert("send-error", "Selecione um pixel"); return; }
   if (!phone || !value) { showAlert("send-error", "Telefone e valor sao obrigatorios"); return; }
+  var city = document.getElementById("send-city").value.trim();
+  var state = document.getElementById("send-state").value.trim().toUpperCase();
   var btn = document.getElementById("send-btn");
   btn.disabled = true; btn.textContent = "Enviando...";
-  api("POST", "/api/send", { pixel_id: pixel_id, name: name, phone: phone, email: email, value: parseFloat(value), gender: gender, cep: cep }).then(function(res) {
+  api("POST", "/api/send", { pixel_id: pixel_id, name: name, phone: phone, email: email, value: parseFloat(value), gender: gender, cep: cep, city: city, state: state }).then(function(res) {
     btn.disabled = false; btn.textContent = "Enviar para Meta";
     if (res && res.success) {
       showAlert("send-success", "Conversao enviada! fbtrace: " + (res.fbtrace_id || "--"));
-      ["send-name", "send-phone", "send-email", "send-value", "send-cep"].forEach(function(id) { document.getElementById(id).value = ""; });
+      ["send-name", "send-phone", "send-email", "send-value", "send-cep", "send-city", "send-state"].forEach(function(id) { document.getElementById(id).value = ""; });
       document.getElementById("send-gender").value = "";
     } else {
       showAlert("send-error", "Erro: " + ((res && res.error) ? res.error : "Erro desconhecido"));
