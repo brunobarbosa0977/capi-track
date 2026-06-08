@@ -189,6 +189,10 @@ function parseFiveDelivery(body) {
   // CEP: apenas dígitos
   const cep = String(addr.zipCode || '').replace(/\D/g, '');
 
+  // Cidade e Estado
+  const city  = String(addr.city  || '').trim();
+  const state = String(addr.state || '').trim();
+
   // Valor: usa product.offer.price (já em reais conforme payload)
   const value = parseFloat(offer.price || 0) || 0;
 
@@ -198,6 +202,8 @@ function parseFiveDelivery(body) {
     phone:  phone,
     email:  String(c.mail  || '').trim(),
     cep:    cep,
+    city:   city,
+    state:  state,
     value:  value,
     gender: ''
   };
@@ -233,7 +239,7 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
       return res.status(400).json({ error: 'Nenhum pixel configurado no Infinity Track' });
     }
 
-    console.log('[FiveDelivery] Disparando Purchase → ' + lead.phone + ' | R$' + lead.value + ' | pixels: ' + pixels.length + ' | orderId: ' + body.orderId);
+    console.log('[FiveDelivery] Disparando Purchase → ' + lead.phone + ' | R$' + lead.value + ' | ' + lead.city + '/' + lead.state + ' | pixels: ' + pixels.length + ' | orderId: ' + body.orderId);
 
     const results = await Promise.all(pixels.map(async function(pixelCfg) {
       const result = await metaApi.sendPurchase(pixelCfg, lead);
@@ -285,11 +291,11 @@ app.post('/webhook/:token', async function(req, res) {
   try {
     const cfg = await db.getConfig();
     if (!cfg || req.params.token !== cfg.webhook_token) return res.status(403).json({ error: 'Webhook invalido' });
-    const { name, phone, email, value, gender, cep, pixel_id } = req.body;
+    const { name, phone, email, value, gender, cep, city, state, pixel_id } = req.body;
     if (!phone || !value) return res.status(400).json({ error: 'phone e value sao obrigatorios' });
     let pixelCfg = pixel_id ? await db.getPixelById(pixel_id) : (await db.getPixels())[0];
     if (!pixelCfg) return res.status(400).json({ error: 'Nenhum pixel configurado' });
-    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
+    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep, city, state });
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
     res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -298,12 +304,12 @@ app.post('/webhook/:token', async function(req, res) {
 // ─── ENVIO MANUAL / BULK (META) ───────────────────────────────────────────────
 app.post('/api/send', auth, async function(req, res) {
   try {
-    const { name, phone, email, value, gender, cep, pixel_id } = req.body;
+    const { name, phone, email, value, gender, cep, city, state, pixel_id } = req.body;
     if (!phone || !value) return res.status(400).json({ error: 'Telefone e valor sao obrigatorios' });
     if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
     const pixelCfg = await db.getPixelById(pixel_id);
     if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
-    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
+    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep, city, state });
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
     res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -325,7 +331,7 @@ app.post('/api/preview-bulk', auth, upload.single('file'), async function(req, r
     const normalize = function(row) {
       const k = {};
       Object.keys(row).forEach(function(key) { k[key.toLowerCase().trim()] = row[key]; });
-      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'' };
+      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'', city: k.cidade||k.city||'', state: k.estado||k.state||'' };
     };
     res.json({ rows: rows.map(normalize), total: rows.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -351,7 +357,7 @@ app.post('/api/send-bulk', auth, upload.single('file'), async function(req, res)
     const normalize = function(row) {
       const k = {};
       Object.keys(row).forEach(function(key) { k[key.toLowerCase().trim()] = row[key]; });
-      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'' };
+      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'', city: k.cidade||k.city||'', state: k.estado||k.state||'' };
     };
     const results = [];
     for (let i = 0; i < rows.length; i++) {
