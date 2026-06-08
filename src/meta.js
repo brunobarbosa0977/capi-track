@@ -31,6 +31,8 @@ async function sendPurchase(cfg, data) {
   const value = data.value;
   const gender = data.gender;
   const cep = data.cep;
+  const city = data.city;
+  const state = data.state;
   const pixel_id = cfg.pixel_id;
   const access_token = cfg.access_token;
 
@@ -43,6 +45,8 @@ async function sendPurchase(cfg, data) {
     if (parts.length > 1) userData.ln = [hash(parts.slice(1).join(' '))];
   }
   if (cep) userData.zp = [hash(normalizeCep(cep))];
+  if (city) userData.ct = [hash(city.toString().trim().toLowerCase())];
+  if (state) userData.st = [hash(state.toString().trim().toLowerCase())];
   if (gender) {
     const g = normalizeGender(gender);
     if (g) userData.ge = [hash(g)];
