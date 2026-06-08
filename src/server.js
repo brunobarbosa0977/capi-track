@@ -176,42 +176,27 @@ initSpyDB().catch(console.error);
 // POST /webhook/datacrazy  { "phone": "5511999999999", "ctwa_clid": "ARAk..." }
 // =============================================================================
 
-// POST /webhook/datacrazy?access_token=TOKEN
+// POST /webhook/datacrazy — aceita qualquer payload, sempre retorna sucesso
 app.all('/webhook/datacrazy', async function(req, res) {
   try {
-    const DATACRAZY_TOKEN = process.env.DATACRAZY_TOKEN || '49a96241d6c5795f5ce5e82d74018a7ee42b43e701d755760db0f4046541c33a';
+    const body = req.body || {};
+    console.log('[Datacrazy] Recebido:', JSON.stringify(body));
 
-    // Aceita token via query string, header ou body
-    const token = req.query.access_token || req.headers['x-access-token'] || (req.body && req.body.access_token);
+    const phone = body.phone || body.Phone || body.telefone || '';
+    const ctwa_clid = body.ctwa_clid || body.ctwaClid || body.ctwa || '';
 
-    console.log('[Datacrazy] method:', req.method);
-    console.log('[Datacrazy] body:', JSON.stringify(req.body));
-    console.log('[Datacrazy] query:', JSON.stringify(req.query));
-
-    if (token && token !== DATACRAZY_TOKEN) {
-      console.log('[Datacrazy] Token inválido');
-      return res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'invalid_token' } });
+    if (phone && ctwa_clid) {
+      await db.saveCtwaClid(phone, ctwa_clid);
+      console.log('[Datacrazy] Salvo com sucesso:', phone, ctwa_clid);
+    } else {
+      console.log('[Datacrazy] phone ou ctwa_clid vazio, ignorado');
     }
-
-    const { phone, ctwa_clid } = req.body || {};
-
-    if (!phone) {
-      console.log('[Datacrazy] Sem phone, ignorado');
-      return res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'ignored' } });
-    }
-
-    if (!ctwa_clid) {
-      console.log('[Datacrazy] Sem ctwa_clid, ignorado → lead orgânico ou direto');
-      return res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'ignored' } });
-    }
-
-    await db.saveCtwaClid(phone, ctwa_clid);
-    console.log('[Datacrazy] ctwa_clid salvo → ' + String(phone).slice(-4).padStart(8, '*'));
-    res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'saved' } });
   } catch(e) {
-    console.error('[Datacrazy] Erro:', e.message);
-    res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'error' } });
+    console.error('[Datacrazy] Erro interno:', e.message);
   }
+
+  // Sempre retorna 200 com sucesso independente de qualquer coisa
+  return res.status(200).json({ success: true, ok: true, id: '1', status: 'ok', result: { message_id: 1 } });
 });
 
 // GET /api/ctwa/leads — lista registros de ctwa_clid (admin/debug)
