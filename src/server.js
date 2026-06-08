@@ -180,10 +180,13 @@ initSpyDB().catch(console.error);
 app.all('/webhook/datacrazy', async function(req, res) {
   try {
     const body = req.body || {};
-    console.log('[Datacrazy] Recebido:', JSON.stringify(body));
+    const query = req.query || {};
+    const merged = Object.assign({}, query, body);
+    console.log('[Datacrazy] Recebido body:', JSON.stringify(body));
+    console.log('[Datacrazy] Recebido query:', JSON.stringify(query));
 
-    const phone = body.phone || body.Phone || body.telefone || '';
-    const ctwa_clid = body.ctwa_clid || body.ctwaClid || body.ctwa || '';
+    const phone = merged.phone || merged.Phone || merged.telefone || '';
+    const ctwa_clid = merged.ctwa_clid || merged.ctwaClid || merged.ctwa || '';
 
     if (phone && ctwa_clid) {
       await db.saveCtwaClid(phone, ctwa_clid);
