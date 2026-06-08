@@ -173,7 +173,6 @@ initSpyDB().catch(console.error);
 
 // =============================================================================
 // WEBHOOK DATACRAZY — recebe ctwa_clid e armazena por número de telefone
-// Chamado pelo chatbot Datacrazy quando lead inicia conversa via anúncio WPP
 // POST /webhook/datacrazy  { "phone": "5511999999999", "ctwa_clid": "ARAk..." }
 // =============================================================================
 
@@ -181,12 +180,18 @@ app.post('/webhook/datacrazy', async function(req, res) {
   try {
     const { phone, ctwa_clid } = req.body;
 
-    if (!phone || !ctwa_clid) {
-      return res.status(400).json({ error: 'phone e ctwa_clid são obrigatórios' });
+    if (!phone) {
+      return res.status(400).json({ error: 'phone é obrigatório' });
+    }
+
+    // Se ctwa_clid vier vazio (lead não veio de anúncio), ignora silenciosamente
+    if (!ctwa_clid) {
+      console.log('[Datacrazy] Sem ctwa_clid, ignorado → lead orgânico ou direto');
+      return res.status(200).json({ ok: true, ignored: true, reason: 'sem ctwa_clid' });
     }
 
     await db.saveCtwaClid(phone, ctwa_clid);
-    console.log('[Datacrazy] ctwa_clid salvo → ' + phone.replace(/\D/g,'').slice(-4).padStart(phone.length, '*'));
+    console.log('[Datacrazy] ctwa_clid salvo → ' + String(phone).replace(/\D/g,'').slice(-4).padStart(String(phone).length, '*'));
     res.status(200).json({ ok: true });
   } catch(e) {
     console.error('[Datacrazy] Erro:', e.message);
@@ -271,9 +276,9 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
     const ctwa_clid = await db.getCtwaClid(lead.phone);
     if (ctwa_clid) {
       lead.ctwa_clid = ctwa_clid;
-      console.log('[FiveDelivery] ctwa_clid encontrado para ' + lead.phone.slice(-4).padStart(lead.phone.length, '*'));
+      console.log('[FiveDelivery] ctwa_clid encontrado ✅');
     } else {
-      console.log('[FiveDelivery] Sem ctwa_clid para ' + lead.phone.slice(-4).padStart(lead.phone.length, '*'));
+      console.log('[FiveDelivery] Sem ctwa_clid para este número ❌');
     }
 
     // Dispara para todos os pixels cadastrados simultaneamente
