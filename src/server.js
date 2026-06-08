@@ -176,26 +176,32 @@ initSpyDB().catch(console.error);
 // POST /webhook/datacrazy  { "phone": "5511999999999", "ctwa_clid": "ARAk..." }
 // =============================================================================
 
-app.post('/webhook/datacrazy', async function(req, res) {
+// Aceita GET e POST para diagnóstico — loga tudo que chega
+app.all('/webhook/datacrazy', async function(req, res) {
   try {
-    const { phone, ctwa_clid } = req.body;
+    console.log('[Datacrazy] method:', req.method);
+    console.log('[Datacrazy] headers:', JSON.stringify(req.headers));
+    console.log('[Datacrazy] body:', JSON.stringify(req.body));
+    console.log('[Datacrazy] query:', JSON.stringify(req.query));
+
+    const { phone, ctwa_clid } = req.body || {};
 
     if (!phone) {
-      return res.status(400).json({ error: 'phone é obrigatório' });
+      console.log('[Datacrazy] Sem phone, ignorado');
+      return res.status(200).json({ ok: true, ignored: true, reason: 'sem phone' });
     }
 
-    // Se ctwa_clid vier vazio (lead não veio de anúncio), ignora silenciosamente
     if (!ctwa_clid) {
       console.log('[Datacrazy] Sem ctwa_clid, ignorado → lead orgânico ou direto');
       return res.status(200).json({ ok: true, ignored: true, reason: 'sem ctwa_clid' });
     }
 
     await db.saveCtwaClid(phone, ctwa_clid);
-    console.log('[Datacrazy] ctwa_clid salvo → ' + String(phone).replace(/\D/g,'').slice(-4).padStart(String(phone).length, '*'));
+    console.log('[Datacrazy] ctwa_clid salvo → ' + String(phone).slice(-4).padStart(8, '*'));
     res.status(200).json({ ok: true });
   } catch(e) {
     console.error('[Datacrazy] Erro:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(200).json({ ok: true, error: e.message });
   }
 });
 
