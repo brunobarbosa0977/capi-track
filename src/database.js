@@ -264,11 +264,42 @@ async function saveCtwaClid(phone, ctwa_clid) {
  */
 async function getCtwaClid(phone) {
   const p = normalizePhoneForCtwa(phone);
-  // Busca pelo número completo (com 55) e também pelo número sem DDI
   const sem55 = p.startsWith('55') ? p.slice(2) : p;
+
+  // Gera variantes com e sem o dígito 9 (8 dígitos vs 9 dígitos)
+  function variantes(num) {
+    const v = new Set();
+    v.add(num);
+    // com DDI 55
+    const local = num.startsWith('55') ? num.slice(2) : num;
+    const com55 = num.startsWith('55') ? num : '55' + num;
+    v.add(local);
+    v.add(com55);
+    // remove $ que às vezes vem do Datacrazy
+    const clean = num.replace(/^\$/, '');
+    v.add(clean);
+    v.add('55' + clean.replace(/^55/, ''));
+    // adiciona/remove o 9 após o DDD (2 dígitos)
+    const localClean = clean.startsWith('55') ? clean.slice(2) : clean;
+    if (localClean.length === 11 && localClean[2] === '9') {
+      // tem 9, gera sem 9
+      const sem9 = localClean.slice(0, 2) + localClean.slice(3);
+      v.add(sem9);
+      v.add('55' + sem9);
+    } else if (localClean.length === 10) {
+      // sem 9, gera com 9
+      const com9 = localClean.slice(0, 2) + '9' + localClean.slice(2);
+      v.add(com9);
+      v.add('55' + com9);
+    }
+    return Array.from(v).filter(Boolean);
+  }
+
+  const todos = variantes(p);
+  const placeholders = todos.map((_, i) => '$' + (i + 1)).join(', ');
   const res = await pool.query(
-    'SELECT ctwa_clid FROM ctwa_leads WHERE phone = $1 OR phone = $2 ORDER BY updated_at DESC LIMIT 1',
-    [p, sem55]
+    'SELECT ctwa_clid FROM ctwa_leads WHERE phone IN (' + placeholders + ') ORDER BY updated_at DESC LIMIT 1',
+    todos
   );
   return res.rows.length > 0 ? res.rows[0].ctwa_clid : null;
 }
