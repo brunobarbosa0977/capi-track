@@ -172,6 +172,40 @@ app.delete('/api/spy/logs', async function(req, res) {
 initSpyDB().catch(console.error);
 
 // =============================================================================
+// WEBHOOK DATACRAZY — recebe ctwa_clid e armazena por número de telefone
+// Chamado pelo chatbot Datacrazy quando lead inicia conversa via anúncio WPP
+// POST /webhook/datacrazy  { "phone": "5511999999999", "ctwa_clid": "ARAk..." }
+// =============================================================================
+
+app.post('/webhook/datacrazy', async function(req, res) {
+  try {
+    const { phone, ctwa_clid } = req.body;
+
+    if (!phone || !ctwa_clid) {
+      return res.status(400).json({ error: 'phone e ctwa_clid são obrigatórios' });
+    }
+
+    await db.saveCtwaClid(phone, ctwa_clid);
+    console.log('[Datacrazy] ctwa_clid salvo → ' + phone.replace(/\D/g,'').slice(-4).padStart(phone.length, '*'));
+    res.status(200).json({ ok: true });
+  } catch(e) {
+    console.error('[Datacrazy] Erro:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/ctwa/leads — lista registros de ctwa_clid (admin/debug)
+app.get('/api/ctwa/leads', auth, async function(req, res) {
+  try {
+    const limit  = parseInt(req.query.limit  || 50);
+    const page   = parseInt(req.query.page   || 1);
+    const offset = (page - 1) * limit;
+    const data   = await db.getCtwaLeads({ limit, offset });
+    res.json(data);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// =============================================================================
 // WEBHOOK FIVE DELIVERY — disparo automático de Purchase na Meta CAPI
 // Deve vir ANTES de /webhook/:token
 // =============================================================================
@@ -233,13 +267,22 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
       return res.status(200).json({ ok: true, ignored: true, reason: 'sem telefone' });
     }
 
+    // Busca ctwa_clid armazenado pelo Datacrazy para este número
+    const ctwa_clid = await db.getCtwaClid(lead.phone);
+    if (ctwa_clid) {
+      lead.ctwa_clid = ctwa_clid;
+      console.log('[FiveDelivery] ctwa_clid encontrado para ' + lead.phone.slice(-4).padStart(lead.phone.length, '*'));
+    } else {
+      console.log('[FiveDelivery] Sem ctwa_clid para ' + lead.phone.slice(-4).padStart(lead.phone.length, '*'));
+    }
+
     // Dispara para todos os pixels cadastrados simultaneamente
     const pixels = await db.getPixels();
     if (!pixels || !pixels.length) {
       return res.status(400).json({ error: 'Nenhum pixel configurado no Infinity Track' });
     }
 
-    console.log('[FiveDelivery] Disparando Purchase → ' + lead.phone + ' | R$' + lead.value + ' | ' + lead.city + '/' + lead.state + ' | pixels: ' + pixels.length + ' | orderId: ' + body.orderId);
+    console.log('[FiveDelivery] Disparando Purchase → ' + lead.phone + ' | R$' + lead.value + ' | ' + lead.city + '/' + lead.state + ' | pixels: ' + pixels.length + ' | orderId: ' + body.orderId + ' | ctwa: ' + (ctwa_clid ? '✅' : '❌'));
 
     const results = await Promise.all(pixels.map(async function(pixelCfg) {
       const result = await metaApi.sendPurchase(pixelCfg, lead);
@@ -261,7 +304,7 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
     }));
 
     const sent = results.filter(function(r) { return r.success; }).length;
-    res.status(200).json({ ok: true, sent: sent, total: pixels.length, phone: lead.phone, value: lead.value, results: results });
+    res.status(200).json({ ok: true, sent: sent, total: pixels.length, phone: lead.phone, value: lead.value, ctwa_clid_used: !!ctwa_clid, results: results });
 
   } catch(e) {
     console.error('[FiveDelivery] Erro:', e.message);
