@@ -188,20 +188,20 @@ app.all('/webhook/datacrazy', async function(req, res) {
 
     if (!phone) {
       console.log('[Datacrazy] Sem phone, ignorado');
-      return res.status(200).json({ ok: true, ignored: true, reason: 'sem phone' });
+      return res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'ignored' } });
     }
 
     if (!ctwa_clid) {
       console.log('[Datacrazy] Sem ctwa_clid, ignorado → lead orgânico ou direto');
-      return res.status(200).json({ ok: true, ignored: true, reason: 'sem ctwa_clid' });
+      return res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'ignored' } });
     }
 
     await db.saveCtwaClid(phone, ctwa_clid);
     console.log('[Datacrazy] ctwa_clid salvo → ' + String(phone).slice(-4).padStart(8, '*'));
-    res.status(200).json({ ok: true });
+    res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'saved' } });
   } catch(e) {
     console.error('[Datacrazy] Erro:', e.message);
-    res.status(200).json({ ok: true, error: e.message });
+    res.status(200).json({ ok: true, success: true, message: { id: '1', status: 'saved' } });
   }
 });
 
