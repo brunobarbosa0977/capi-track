@@ -139,6 +139,10 @@ tr:hover td{background:rgba(255,255,255,0.02);}
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12h3M19 12h3M12 2v3M12 19v3"/></svg>
         Pixels
       </div>
+      <div class="NI" onclick="showPage('ctwa',this)">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        CTWA Leads
+      </div>
       <div class="NI" onclick="showPage('config',this)">
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         Configuracoes
@@ -287,12 +291,11 @@ tr:hover td{background:rgba(255,255,255,0.02);}
           <div class="FG"><label>Nome do Pixel *</label><input type="text" id="pixel-name" placeholder="Ex: Glivia - BM Infinity"/></div>
           <div class="FG"><label>Pixel ID *</label><input type="text" id="pixel-id-input" placeholder="1688531345838238"/></div>
           <div class="FG"><label>Access Token *</label><input type="password" id="pixel-token" placeholder="Cole seu Access Token aqui"/></div>
-          <div class="FG"><label>Page ID (Facebook) <span style="color:var(--mut);font-weight:400">— obrigatorio para ctwa_clid</span></label><input type="text" id="pixel-page-id" placeholder="Ex: 285917284597438"/></div>
           <div style="display:flex;gap:8px">
             <button class="BT BP" onclick="savePixel()" style="flex:1">Salvar Pixel</button>
             <button class="BT BS" onclick="cancelEditPixel()" id="pixel-cancel-btn" style="display:none">Cancelar</button>
           </div>
-          <p style="font-size:11px;color:var(--mut);margin-top:14px;line-height:1.6">Page ID: Pagina do Facebook > Sobre > ID da Pagina<br>Access Token: Gerenciador de Eventos > Pixel > Configuracoes > API de Conversoes > Gerar token</p>
+          <p style="font-size:11px;color:var(--mut);margin-top:14px;line-height:1.6">Gerenciador de Eventos > Pixel > Configuracoes > API de Conversoes > Gerar token</p>
         </div>
         <div class="CD">
           <div class="CDT">Pixels Cadastrados</div>
@@ -316,6 +319,29 @@ tr:hover td{background:rgba(255,255,255,0.02);}
           <div class="WB" id="webhook-url">Carregando...<button class="CB" onclick="copyWebhook()">Copiar</button></div>
           <div style="margin-top:16px;font-size:12px;color:var(--mut);font-weight:500;margin-bottom:6px">Formato POST JSON:</div>
           <div class="PB">{"name":"Joao","phone":"5562999999999",<br>"value":197,"gender":"M","cep":"74000000",<br>"pixel_id":"ID_DO_PIXEL"}</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-ctwa" class="PG">
+      <div class="PH"><h2>CTWA Leads</h2><p>Leads capturados via Click-to-WhatsApp com ctwa_clid</p></div>
+      <div class="FR2">
+        <input type="text" id="ctwa-search" placeholder="Buscar por telefone..." style="width:240px" oninput="loadCtwaLeads()"/>
+        <button class="BT BS BSM" onclick="loadCtwaLeads()">Atualizar</button>
+      </div>
+      <div class="CD">
+        <div class="TW">
+          <table>
+            <thead><tr><th>Data/Hora</th><th>Telefone</th><th>CTWA CLID</th><th>Atualizado em</th></tr></thead>
+            <tbody id="ctwa-body"><tr><td colspan="4" style="text-align:center;color:var(--mut);padding:40px">Carregando...</td></tr></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+          <span style="font-size:12px;color:var(--mut)" id="ctwa-count">--</span>
+          <div style="display:flex;gap:8px">
+            <button class="BT BS BSM" id="ctwa-prev" onclick="changeCtwaPage(-1)">Anterior</button>
+            <button class="BT BS BSM" id="ctwa-next" onclick="changeCtwaPage(1)">Proxima</button>
+          </div>
         </div>
       </div>
     </div>
@@ -381,6 +407,7 @@ function showPage(name, el) {
   if (name === "dashboard") loadStats();
   if (name === "events") { eventsPage = 1; loadEvents(); }
   if (name === "config") loadWebhookUrl();
+  if (name === "ctwa") { ctwaPage = 1; loadCtwaLeads(); }
   if (name === "pixels") renderPixelsList();
 }
 
@@ -424,9 +451,8 @@ function savePixel() {
   var name = document.getElementById("pixel-name").value.trim();
   var pixel_id = document.getElementById("pixel-id-input").value.trim();
   var access_token = document.getElementById("pixel-token").value.trim();
-  var page_id = document.getElementById("pixel-page-id").value.trim();
-  if (!name || !pixel_id || !access_token) { showAlert("pixel-error", "Preencha todos os campos obrigatorios"); return; }
-  api("POST", "/api/pixels", { id: id || undefined, name: name, pixel_id: pixel_id, access_token: access_token, page_id: page_id }).then(function(res) {
+  if (!name || !pixel_id || !access_token) { showAlert("pixel-error", "Preencha todos os campos"); return; }
+  api("POST", "/api/pixels", { id: id || undefined, name: name, pixel_id: pixel_id, access_token: access_token }).then(function(res) {
     if (res && res.ok) {
       showAlert("pixel-success", id ? "Pixel atualizado!" : "Pixel cadastrado!");
       allPixels = res.pixels;
@@ -446,13 +472,12 @@ function editPixel(id) {
   document.getElementById("pixel-name").value = p.name;
   document.getElementById("pixel-id-input").value = p.pixel_id;
   document.getElementById("pixel-token").value = "";
-  document.getElementById("pixel-page-id").value = p.page_id || "";
   document.getElementById("pixel-form-title").textContent = "Editar Pixel";
   document.getElementById("pixel-cancel-btn").style.display = "block";
 }
 
 function cancelEditPixel() {
-  ["pixel-edit-id", "pixel-name", "pixel-id-input", "pixel-token", "pixel-page-id"].forEach(function(id) { document.getElementById(id).value = ""; });
+  ["pixel-edit-id", "pixel-name", "pixel-id-input", "pixel-token"].forEach(function(id) { document.getElementById(id).value = ""; });
   document.getElementById("pixel-form-title").textContent = "+ Adicionar Pixel";
   document.getElementById("pixel-cancel-btn").style.display = "none";
 }
@@ -627,6 +652,33 @@ function copyWebhook(url) {
     if (b) { b.textContent = "Copiado!"; setTimeout(function() { b.textContent = "Copiar"; }, 2000); }
   });
 }
+
+var ctwaPage = 1;
+
+function loadCtwaLeads() {
+  var search = document.getElementById("ctwa-search") ? document.getElementById("ctwa-search").value.trim() : "";
+  var url = "/api/ctwa-leads?page=" + ctwaPage + "&limit=50";
+  if (search) url += "&phone=" + encodeURIComponent(search);
+  api("GET", url).then(function(data) {
+    if (!data) return;
+    var tbody = document.getElementById("ctwa-body");
+    if (!data.rows || !data.rows.length) {
+      tbody.innerHTML = "<tr><td colspan=\"4\" style=\"text-align:center;color:var(--mut);padding:40px\">Nenhum lead CTWA encontrado</td></tr>";
+      document.getElementById("ctwa-count").textContent = "0 leads";
+      return;
+    }
+    document.getElementById("ctwa-count").textContent = data.total + " leads - pagina " + ctwaPage;
+    tbody.innerHTML = data.rows.map(function(r) {
+      var clid = r.ctwa_clid || "--";
+      var clid_short = clid.length > 40 ? clid.substring(0, 40) + "..." : clid;
+      return "<tr><td style=\"white-space:nowrap;color:var(--mut);font-size:11px\">" + (r.created_at_br || "--") + "</td><td style=\"font-family:monospace;font-size:12px\">" + (r.phone || "--") + "</td><td style=\"font-family:monospace;font-size:11px;color:var(--blu)\" title=\"" + clid + "\">" + clid_short + "</td><td style=\"white-space:nowrap;color:var(--mut);font-size:11px\">" + (r.updated_at_br || "--") + "</td></tr>";
+    }).join("");
+    document.getElementById("ctwa-prev").disabled = ctwaPage <= 1;
+    document.getElementById("ctwa-next").disabled = data.rows.length < 50;
+  });
+}
+
+function changeCtwaPage(dir) { ctwaPage = Math.max(1, ctwaPage + dir); loadCtwaLeads(); }
 
 function showAlert(id, msg) { var el = document.getElementById(id); if (!el) return; el.textContent = msg; el.classList.add("show"); setTimeout(function() { el.classList.remove("show"); }, 6000); }
 function hideAlerts(ids) { ids.forEach(function(id) { var el = document.getElementById(id); if (el) el.classList.remove("show"); }); }
