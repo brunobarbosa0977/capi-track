@@ -172,48 +172,6 @@ app.delete('/api/spy/logs', async function(req, res) {
 initSpyDB().catch(console.error);
 
 // =============================================================================
-// WEBHOOK DATACRAZY — recebe ctwa_clid e armazena por número de telefone
-// POST /webhook/datacrazy  { "phone": "5511999999999", "ctwa_clid": "ARAk..." }
-// =============================================================================
-
-// POST /webhook/datacrazy — aceita qualquer payload, sempre retorna sucesso
-app.all('/webhook/datacrazy', async function(req, res) {
-  try {
-    const body = req.body || {};
-    const query = req.query || {};
-    const merged = Object.assign({}, query, body);
-    console.log('[Datacrazy] Recebido body:', JSON.stringify(body));
-    console.log('[Datacrazy] Recebido query:', JSON.stringify(query));
-
-    const phone = merged.phone || merged.Phone || merged.telefone || '';
-    const ctwa_clid = merged.ctwa_clid || merged.ctwaClid || merged.ctwa || '';
-
-    if (phone && ctwa_clid) {
-      await db.saveCtwaClid(phone, ctwa_clid);
-      console.log('[Datacrazy] Salvo com sucesso:', phone, ctwa_clid);
-    } else {
-      console.log('[Datacrazy] phone ou ctwa_clid vazio, ignorado');
-    }
-  } catch(e) {
-    console.error('[Datacrazy] Erro interno:', e.message);
-  }
-
-  // Sempre retorna 200 com sucesso independente de qualquer coisa
-  return res.status(200).json({ success: true, ok: true, id: '1', status: 'ok', result: { message_id: 1 } });
-});
-
-// GET /api/ctwa/leads — lista registros de ctwa_clid (admin/debug)
-app.get('/api/ctwa/leads', auth, async function(req, res) {
-  try {
-    const limit  = parseInt(req.query.limit  || 50);
-    const page   = parseInt(req.query.page   || 1);
-    const offset = (page - 1) * limit;
-    const data   = await db.getCtwaLeads({ limit, offset });
-    res.json(data);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// =============================================================================
 // WEBHOOK FIVE DELIVERY — disparo automático de Purchase na Meta CAPI
 // Deve vir ANTES de /webhook/:token
 // =============================================================================
@@ -231,10 +189,6 @@ function parseFiveDelivery(body) {
   // CEP: apenas dígitos
   const cep = String(addr.zipCode || '').replace(/\D/g, '');
 
-  // Cidade e Estado
-  const city  = String(addr.city  || '').trim();
-  const state = String(addr.state || '').trim();
-
   // Valor: usa product.offer.price (já em reais conforme payload)
   const value = parseFloat(offer.price || 0) || 0;
 
@@ -244,8 +198,6 @@ function parseFiveDelivery(body) {
     phone:  phone,
     email:  String(c.mail  || '').trim(),
     cep:    cep,
-    city:   city,
-    state:  state,
     value:  value,
     gender: ''
   };
@@ -275,22 +227,13 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
       return res.status(200).json({ ok: true, ignored: true, reason: 'sem telefone' });
     }
 
-    // Busca ctwa_clid armazenado pelo Datacrazy para este número
-    const ctwa_clid = await db.getCtwaClid(lead.phone);
-    if (ctwa_clid) {
-      lead.ctwa_clid = ctwa_clid;
-      console.log('[FiveDelivery] ctwa_clid encontrado ✅');
-    } else {
-      console.log('[FiveDelivery] Sem ctwa_clid para este número ❌');
-    }
-
     // Dispara para todos os pixels cadastrados simultaneamente
     const pixels = await db.getPixels();
     if (!pixels || !pixels.length) {
       return res.status(400).json({ error: 'Nenhum pixel configurado no Infinity Track' });
     }
 
-    console.log('[FiveDelivery] Disparando Purchase → ' + lead.phone + ' | R$' + lead.value + ' | ' + lead.city + '/' + lead.state + ' | pixels: ' + pixels.length + ' | orderId: ' + body.orderId + ' | ctwa: ' + (ctwa_clid ? '✅' : '❌'));
+    console.log('[FiveDelivery] Disparando Purchase → ' + lead.phone + ' | R$' + lead.value + ' | pixels: ' + pixels.length + ' | orderId: ' + body.orderId);
 
     const results = await Promise.all(pixels.map(async function(pixelCfg) {
       const result = await metaApi.sendPurchase(pixelCfg, lead);
@@ -312,7 +255,7 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
     }));
 
     const sent = results.filter(function(r) { return r.success; }).length;
-    res.status(200).json({ ok: true, sent: sent, total: pixels.length, phone: lead.phone, value: lead.value, ctwa_clid_used: !!ctwa_clid, results: results });
+    res.status(200).json({ ok: true, sent: sent, total: pixels.length, phone: lead.phone, value: lead.value, results: results });
 
   } catch(e) {
     console.error('[FiveDelivery] Erro:', e.message);
@@ -342,11 +285,11 @@ app.post('/webhook/:token', async function(req, res) {
   try {
     const cfg = await db.getConfig();
     if (!cfg || req.params.token !== cfg.webhook_token) return res.status(403).json({ error: 'Webhook invalido' });
-    const { name, phone, email, value, gender, cep, city, state, pixel_id } = req.body;
+    const { name, phone, email, value, gender, cep, pixel_id } = req.body;
     if (!phone || !value) return res.status(400).json({ error: 'phone e value sao obrigatorios' });
     let pixelCfg = pixel_id ? await db.getPixelById(pixel_id) : (await db.getPixels())[0];
     if (!pixelCfg) return res.status(400).json({ error: 'Nenhum pixel configurado' });
-    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep, city, state });
+    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
     res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -355,12 +298,12 @@ app.post('/webhook/:token', async function(req, res) {
 // ─── ENVIO MANUAL / BULK (META) ───────────────────────────────────────────────
 app.post('/api/send', auth, async function(req, res) {
   try {
-    const { name, phone, email, value, gender, cep, city, state, pixel_id } = req.body;
+    const { name, phone, email, value, gender, cep, pixel_id } = req.body;
     if (!phone || !value) return res.status(400).json({ error: 'Telefone e valor sao obrigatorios' });
     if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
     const pixelCfg = await db.getPixelById(pixel_id);
     if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
-    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep, city, state });
+    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
     res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -382,7 +325,7 @@ app.post('/api/preview-bulk', auth, upload.single('file'), async function(req, r
     const normalize = function(row) {
       const k = {};
       Object.keys(row).forEach(function(key) { k[key.toLowerCase().trim()] = row[key]; });
-      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'', city: k.cidade||k.city||'', state: k.estado||k.state||'' };
+      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'' };
     };
     res.json({ rows: rows.map(normalize), total: rows.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -408,7 +351,7 @@ app.post('/api/send-bulk', auth, upload.single('file'), async function(req, res)
     const normalize = function(row) {
       const k = {};
       Object.keys(row).forEach(function(key) { k[key.toLowerCase().trim()] = row[key]; });
-      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'', city: k.cidade||k.city||'', state: k.estado||k.state||'' };
+      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'' };
     };
     const results = [];
     for (let i = 0; i < rows.length; i++) {
@@ -433,6 +376,18 @@ app.get('/api/events', auth, async function(req, res) {
 app.get('/api/stats', auth, async function(req, res) {
   try {
     res.json(await db.getStats(req.query.pixel_id));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/ctwa-leads — lista leads com ctwa_clid capturado
+app.get('/api/ctwa-leads', auth, async function(req, res) {
+  try {
+    var limit  = parseInt(req.query.limit  || 50);
+    var page   = parseInt(req.query.page   || 1);
+    var offset = (page - 1) * limit;
+    var phone  = req.query.phone || null;
+    var result = await db.getCtwaLeads({ limit: limit, offset: offset, phone: phone });
+    res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
