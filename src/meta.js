@@ -24,9 +24,18 @@ function normalizeGender(gender) {
   return null;
 }
 
+/**
+ * Dispara evento Purchase via Meta CAPI.
+ * Suporta tanto pixel de site (MASTER COMPRAS) quanto
+ * Dataset de Mensagens (ESCALA MÁXIMA) vinculado ao WABA.
+ *
+ * @param {object} cfg  - { pixel_id, access_token, page_id, waba_id }
+ * @param {object} data - campos do lead
+ * @param {string} [data.ctwa_clid] - token de sessão do WhatsApp Ads (opcional)
+ */
 async function sendPurchase(cfg, data) {
   const { name, phone, email, value, gender, cep, city, state, ctwa_clid } = data;
-  const { pixel_id, access_token, page_id } = cfg;
+  const { pixel_id, access_token, page_id, waba_id } = cfg;
 
   // ── user_data ──────────────────────────────────────────────────────────────
   const userData = {};
@@ -51,12 +60,19 @@ async function sendPurchase(cfg, data) {
 
   userData.country = [hash('br')];
 
-  // ctwa_clid vai em user_data — enviado em claro (não hashear)
+  // ── ctwa_clid — enviado em claro (não hashear) ────────────────────────────
   if (ctwa_clid) {
     userData.ctwa_clid = ctwa_clid;
   }
 
-  // ── evento base ────────────────────────────────────────────────────────────
+  // ── waba_id — obrigatório para Dataset de Mensagens ───────────────────────
+  // Identifica a conta WhatsApp Business de origem do evento
+  // Enviado dentro de user_data conforme spec do Meta para business_messaging
+  if (waba_id) {
+    userData.whatsapp_business_account_id = waba_id;
+  }
+
+  // ── evento ────────────────────────────────────────────────────────────────
   const eventId = crypto.randomBytes(16).toString('hex');
 
   const event = {
@@ -64,15 +80,14 @@ async function sendPurchase(cfg, data) {
     event_time:    Math.floor(Date.now() / 1000),
     event_id:      eventId,
     action_source: 'business_messaging',
+    messaging_channel: 'whatsapp',
     user_data:     userData,
     custom_data:   { currency: 'BRL', value: parseFloat(value) }
   };
 
-  // ── campos obrigatórios para Dataset de Mensagens ─────────────────────────
-  // messaging_channel e page_id ficam no nível do evento — não em user_data
+  // page_id no nível do evento — necessário para Messenger/Facebook Page
   if (page_id) {
-    event.messaging_channel = 'whatsapp';
-    event.page_id           = page_id;
+    event.page_id = page_id;
   }
 
   const payload = { data: [event] };
@@ -89,8 +104,9 @@ async function sendPurchase(cfg, data) {
 
     if (result.error) {
       return {
-        success: false,
-        error: result.error.message + ' (code: ' + result.error.code + ', subcode: ' + (result.error.error_subcode || 'n/a') + ')'
+        success:   false,
+        error:     result.error.message + ' (code: ' + result.error.code + ', subcode: ' + (result.error.error_subcode || 'n/a') + ')',
+        raw_error: result.error
       };
     }
 
@@ -98,7 +114,8 @@ async function sendPurchase(cfg, data) {
       success:         true,
       events_received: result.events_received,
       fbtrace_id:      result.fbtrace_id,
-      ctwa_clid_used:  !!ctwa_clid
+      ctwa_clid_used:  !!ctwa_clid,
+      waba_id_used:    !!waba_id
     };
 
   } catch (err) {
