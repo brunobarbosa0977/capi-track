@@ -54,7 +54,9 @@ async function init() {
   // Migrações seguras em tabelas existentes
   const migrations = [
     "CREATE INDEX IF NOT EXISTS idx_ctwa_phone ON ctwa_leads(phone)",
-    "CREATE INDEX IF NOT EXISTS idx_ctwa_clid  ON ctwa_leads(ctwa_clid)"
+    "CREATE INDEX IF NOT EXISTS idx_ctwa_clid  ON ctwa_leads(ctwa_clid)",
+    // MIGRAÇÃO: adiciona coluna page_id na tabela pixels se não existir
+    "ALTER TABLE pixels ADD COLUMN IF NOT EXISTS page_id TEXT DEFAULT ''"
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); } catch(e) {}
@@ -83,9 +85,9 @@ async function saveConfig(cfg) {
     const fields = [];
     const values = [];
     let i = 1;
-    if (cfg.password     !== undefined) { fields.push('password = $'      + i++); values.push(cfg.password); }
-    if (cfg.auth_token   !== undefined) { fields.push('auth_token = $'    + i++); values.push(cfg.auth_token); }
-    if (cfg.webhook_token !== undefined) { fields.push('webhook_token = $' + i++); values.push(cfg.webhook_token); }
+    if (cfg.password      !== undefined) { fields.push('password = $'       + i++); values.push(cfg.password); }
+    if (cfg.auth_token    !== undefined) { fields.push('auth_token = $'     + i++); values.push(cfg.auth_token); }
+    if (cfg.webhook_token !== undefined) { fields.push('webhook_token = $'  + i++); values.push(cfg.webhook_token); }
     if (fields.length > 0) {
       await pool.query('UPDATE config SET ' + fields.join(', ') + ' WHERE id = 1', values);
     }
@@ -104,20 +106,20 @@ async function savePixel(data) {
     const exists = await pool.query('SELECT id FROM pixels WHERE id = $1', [data.id]);
     if (exists.rows.length > 0) {
       await pool.query(
-        'UPDATE pixels SET name=$1, pixel_id=$2, access_token=$3 WHERE id=$4',
-        [data.name, data.pixel_id, data.access_token, data.id]
+        'UPDATE pixels SET name=$1, pixel_id=$2, access_token=$3, page_id=$4 WHERE id=$5',
+        [data.name, data.pixel_id, data.access_token, data.page_id || '', data.id]
       );
     } else {
       await pool.query(
-        'INSERT INTO pixels (id, name, pixel_id, access_token) VALUES ($1,$2,$3,$4)',
-        [data.id, data.name, data.pixel_id, data.access_token]
+        'INSERT INTO pixels (id, name, pixel_id, access_token, page_id) VALUES ($1,$2,$3,$4,$5)',
+        [data.id, data.name, data.pixel_id, data.access_token, data.page_id || '']
       );
     }
   } else {
     const newId = Date.now().toString();
     await pool.query(
-      'INSERT INTO pixels (id, name, pixel_id, access_token) VALUES ($1,$2,$3,$4)',
-      [newId, data.name, data.pixel_id, data.access_token]
+      'INSERT INTO pixels (id, name, pixel_id, access_token, page_id) VALUES ($1,$2,$3,$4,$5)',
+      [newId, data.name, data.pixel_id, data.access_token, data.page_id || '']
     );
   }
   return getPixels();
@@ -143,11 +145,11 @@ async function insertEvent(data) {
 }
 
 async function getEvents(opts) {
-  const page  = opts.page || 1;
+  const page   = opts.page || 1;
   const limit  = 50;
   const offset = (page - 1) * limit;
 
-  let where  = 'WHERE 1=1';
+  let where    = 'WHERE 1=1';
   const values = [];
   let i = 1;
   if (opts.status   && opts.status   !== 'all') { where += ' AND status = $'   + i++; values.push(opts.status); }
@@ -186,7 +188,7 @@ async function getEvents(opts) {
 }
 
 async function getStats(pixel_id) {
-  let where = '';
+  let where    = '';
   const values = [];
   if (pixel_id && pixel_id !== 'all') { where = 'WHERE pixel_id = $1'; values.push(pixel_id); }
 
@@ -234,19 +236,12 @@ async function getStats(pixel_id) {
 
 // ─── CTWA CLID ────────────────────────────────────────────────────────────────
 
-/**
- * Normaliza telefone para formato 5511999999999 (com DDI 55)
- */
 function normalizePhoneForCtwa(phone) {
   let p = String(phone || '').replace(/\D/g, '');
   if (!p.startsWith('55')) p = '55' + p;
   return p;
 }
 
-/**
- * Salva ou atualiza o ctwa_clid de um número.
- * Chamado pelo webhook do Datacrazy.
- */
 async function saveCtwaClid(phone, ctwa_clid) {
   const p = normalizePhoneForCtwa(phone);
   await pool.query(`
@@ -257,37 +252,25 @@ async function saveCtwaClid(phone, ctwa_clid) {
   `, [p, ctwa_clid]);
 }
 
-/**
- * Busca o ctwa_clid pelo número do cliente.
- * Tenta com e sem DDI 55 para garantir match.
- * Retorna string ou null.
- */
 async function getCtwaClid(phone) {
   const p = normalizePhoneForCtwa(phone);
-  const sem55 = p.startsWith('55') ? p.slice(2) : p;
 
-  // Gera variantes com e sem o dígito 9 (8 dígitos vs 9 dígitos)
   function variantes(num) {
     const v = new Set();
     v.add(num);
-    // com DDI 55
     const local = num.startsWith('55') ? num.slice(2) : num;
     const com55 = num.startsWith('55') ? num : '55' + num;
     v.add(local);
     v.add(com55);
-    // remove $ que às vezes vem do Datacrazy
     const clean = num.replace(/^\$/, '');
     v.add(clean);
     v.add('55' + clean.replace(/^55/, ''));
-    // adiciona/remove o 9 após o DDD (2 dígitos)
     const localClean = clean.startsWith('55') ? clean.slice(2) : clean;
     if (localClean.length === 11 && localClean[2] === '9') {
-      // tem 9, gera sem 9
       const sem9 = localClean.slice(0, 2) + localClean.slice(3);
       v.add(sem9);
       v.add('55' + sem9);
     } else if (localClean.length === 10) {
-      // sem 9, gera com 9
       const com9 = localClean.slice(0, 2) + '9' + localClean.slice(2);
       v.add(com9);
       v.add('55' + com9);
@@ -304,9 +287,6 @@ async function getCtwaClid(phone) {
   return res.rows.length > 0 ? res.rows[0].ctwa_clid : null;
 }
 
-/**
- * Lista todos os registros de ctwa_leads (para debug/admin).
- */
 async function getCtwaLeads(opts) {
   const limit  = opts && opts.limit  ? parseInt(opts.limit)  : 50;
   const offset = opts && opts.offset ? parseInt(opts.offset) : 0;
