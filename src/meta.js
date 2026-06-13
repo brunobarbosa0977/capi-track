@@ -27,46 +27,57 @@ function normalizeGender(gender) {
 /**
  * Dispara evento Purchase via Meta CAPI.
  *
- * @param {object} cfg  - { pixel_id, access_token }
+ * @param {object} cfg  - { pixel_id, access_token, page_id }
  * @param {object} data - campos do lead
  * @param {string} [data.ctwa_clid] - token de sessão do WhatsApp Ads (opcional)
  */
 async function sendPurchase(cfg, data) {
   const { name, phone, email, value, gender, cep, city, state, ctwa_clid } = data;
-  const { pixel_id, access_token } = cfg;
+  const { pixel_id, access_token, page_id } = cfg;
 
   // ── user_data ──────────────────────────────────────────────────────────────
   const userData = {};
+
   if (phone) userData.ph = [hash(normalizePhone(phone))];
   if (email) userData.em = [hash(email)];
+
   if (name) {
     const parts = name.trim().split(' ');
     userData.fn = [hash(parts[0])];
     if (parts.length > 1) userData.ln = [hash(parts.slice(1).join(' '))];
   }
+
   if (cep)   userData.zp = [hash(normalizeCep(cep))];
   if (city)  userData.ct = [hash(city.toString().trim().toLowerCase())];
   if (state) userData.st = [hash(state.toString().trim().toLowerCase())];
+
   if (gender) {
     const g = normalizeGender(gender);
     if (g) userData.ge = [hash(g)];
   }
+
   userData.country = [hash('br')];
 
-  // ── ctwa_clid — melhora o match rate de leads vindos de anúncios WhatsApp ─
+  // ── ctwa_clid — obrigatório para campanhas WhatsApp Ads ───────────────────
   // Enviado em claro (não hashear) conforme especificação da Meta
+  // Deve vir acompanhado do page_id da página Facebook vinculada ao WhatsApp
   if (ctwa_clid) {
     userData.ctwa_clid = ctwa_clid;
+    if (page_id) userData.page_id = page_id;
   }
 
   // ── payload ────────────────────────────────────────────────────────────────
   const eventId = crypto.randomBytes(16).toString('hex');
+
   const payload = {
     data: [{
       event_name:    'Purchase',
       event_time:    Math.floor(Date.now() / 1000),
       event_id:      eventId,
-      action_source: 'website',
+      // CORREÇÃO: action_source deve ser 'business_messaging' para campanhas
+      // com destino WhatsApp — não 'website'. Isso permite que o Meta associe
+      // corretamente o evento à conversa de WhatsApp e ao ctwa_clid.
+      action_source: 'business_messaging',
       user_data:     userData,
       custom_data:   { currency: 'BRL', value: parseFloat(value) }
     }]
@@ -79,19 +90,23 @@ async function sendPurchase(cfg, data) {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload)
     });
+
     const result = await response.json();
+
     if (result.error) {
       return {
         success: false,
         error: result.error.message + ' (code: ' + result.error.code + ', subcode: ' + (result.error.error_subcode || 'n/a') + ')'
       };
     }
+
     return {
       success:         true,
       events_received: result.events_received,
       fbtrace_id:      result.fbtrace_id,
-      ctwa_clid_used:  !!ctwa_clid   // flag para log/debug
+      ctwa_clid_used:  !!ctwa_clid
     };
+
   } catch (err) {
     return { success: false, error: err.message };
   }
