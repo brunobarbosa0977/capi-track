@@ -393,6 +393,16 @@ app.get('/api/stats', auth, async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/ctwa-leads', auth, async function(req, res) {
+  try {
+    var limit  = parseInt(req.query.limit  || 50);
+    var page   = parseInt(req.query.page   || 1);
+    var offset = (page - 1) * limit;
+    var phone  = req.query.phone || null;
+    res.json(await db.getCtwaLeads({ limit: limit, offset: offset, phone: phone }));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/ctwa-leads — lista leads com ctwa_clid capturado
 app.get('/api/ctwa-leads', auth, async function(req, res) {
   try {
