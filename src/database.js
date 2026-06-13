@@ -290,16 +290,32 @@ async function getCtwaClid(phone) {
 async function getCtwaLeads(opts) {
   const limit  = opts && opts.limit  ? parseInt(opts.limit)  : 50;
   const offset = opts && opts.offset ? parseInt(opts.offset) : 0;
+  const phone  = opts && opts.phone  ? opts.phone : null;
+
+  let where = '';
+  const values = [limit, offset];
+  if (phone) {
+    where = "WHERE phone ILIKE $3";
+    values.push('%' + phone + '%');
+  }
+
   const res = await pool.query(
     `SELECT id, phone, ctwa_clid,
             to_char(created_at AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI:SS') as created_at_br,
             to_char(updated_at AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI:SS') as updated_at_br
      FROM ctwa_leads
+     ${where}
      ORDER BY updated_at DESC
      LIMIT $1 OFFSET $2`,
-    [limit, offset]
+    values
   );
-  const count = await pool.query('SELECT COUNT(*) FROM ctwa_leads');
+
+  const countQuery = phone
+    ? `SELECT COUNT(*) FROM ctwa_leads WHERE phone ILIKE $1`
+    : `SELECT COUNT(*) FROM ctwa_leads`;
+  const countValues = phone ? ['%' + phone + '%'] : [];
+  const count = await pool.query(countQuery, countValues);
+
   return { total: parseInt(count.rows[0].count), rows: res.rows };
 }
 
