@@ -67,16 +67,16 @@ app.post('/api/change-password', auth, async function(req, res) {
 app.get('/api/pixels', auth, async function(req, res) {
   try {
     const pixels = await db.getPixels();
-    res.json(pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id, created_at: p.created_at }; }));
+    res.json(pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id, page_id: p.page_id || '', created_at: p.created_at }; }));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/pixels', auth, async function(req, res) {
   try {
-    const id = req.body.id, name = req.body.name, pixel_id = req.body.pixel_id, access_token = req.body.access_token;
+    const id = req.body.id, name = req.body.name, pixel_id = req.body.pixel_id, access_token = req.body.access_token, page_id = req.body.page_id || '';
     if (!name || !pixel_id || !access_token) return res.status(400).json({ error: 'Todos os campos sao obrigatorios' });
-    const pixels = await db.savePixel({ id, name, pixel_id, access_token });
-    res.json({ ok: true, pixels: pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id }; }) });
+    const pixels = await db.savePixel({ id, name, pixel_id, access_token, page_id });
+    res.json({ ok: true, pixels: pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id, page_id: p.page_id || '' }; }) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -285,11 +285,12 @@ app.post('/webhook/:token', async function(req, res) {
   try {
     const cfg = await db.getConfig();
     if (!cfg || req.params.token !== cfg.webhook_token) return res.status(403).json({ error: 'Webhook invalido' });
-    const { name, phone, email, value, gender, cep, pixel_id } = req.body;
+    const { name, phone, email, value, gender, cep, city, state, pixel_id } = req.body;
     if (!phone || !value) return res.status(400).json({ error: 'phone e value sao obrigatorios' });
     let pixelCfg = pixel_id ? await db.getPixelById(pixel_id) : (await db.getPixels())[0];
     if (!pixelCfg) return res.status(400).json({ error: 'Nenhum pixel configurado' });
-    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
+    const ctwa_clid = await db.getCtwaClid(phone);
+    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep, city: city||'', state: state||'', ctwa_clid: ctwa_clid||null });
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
     res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -298,12 +299,22 @@ app.post('/webhook/:token', async function(req, res) {
 // ─── ENVIO MANUAL / BULK (META) ───────────────────────────────────────────────
 app.post('/api/send', auth, async function(req, res) {
   try {
-    const { name, phone, email, value, gender, cep, pixel_id } = req.body;
+    const { name, phone, email, value, gender, cep, city, state, pixel_id } = req.body;
     if (!phone || !value) return res.status(400).json({ error: 'Telefone e valor sao obrigatorios' });
     if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
     const pixelCfg = await db.getPixelById(pixel_id);
     if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
-    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
+    // Busca ctwa_clid pelo número do cliente
+    const ctwa_clid = await db.getCtwaClid(phone);
+    if (ctwa_clid) {
+      console.log('[Send] ctwa_clid encontrado para ' + phone + ': ' + ctwa_clid.substring(0, 20) + '...');
+    } else {
+      console.log('[Send] Nenhum ctwa_clid encontrado para ' + phone);
+    }
+    const lead = { name, phone, email, value, gender, cep, city: city || '', state: state || '', ctwa_clid: ctwa_clid || null };
+    console.log('[Send] Disparando Purchase → pixel: ' + pixelCfg.name + ' | phone: ' + phone + ' | value: ' + value + ' | ctwa: ' + (ctwa_clid ? 'SIM' : 'NAO') + ' | page_id: ' + (pixelCfg.page_id || 'NAO'));
+    const result = await metaApi.sendPurchase(pixelCfg, lead);
+    console.log('[Send] Resultado: ' + (result.success ? 'SUCESSO fbtrace:' + result.fbtrace_id : 'ERRO: ' + result.error));
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
     res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -351,12 +362,15 @@ app.post('/api/send-bulk', auth, upload.single('file'), async function(req, res)
     const normalize = function(row) {
       const k = {};
       Object.keys(row).forEach(function(key) { k[key.toLowerCase().trim()] = row[key]; });
-      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'' };
+      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'', city: k.cidade||k.city||'', state: k.estado||k.state||'' };
     };
     const results = [];
     for (let i = 0; i < rows.length; i++) {
       const lead = normalize(rows[i]);
       if (!lead.phone || !lead.value) { results.push({ success: false, error: 'Telefone ou valor ausente' }); continue; }
+      // Busca ctwa_clid pelo número
+      const ctwa_clid = await db.getCtwaClid(lead.phone);
+      lead.ctwa_clid = ctwa_clid || null;
       const result = await metaApi.sendPurchase(pixelCfg, lead);
       await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name: lead.name, phone: lead.phone, email: lead.email, value: lead.value, gender: lead.gender, cep: lead.cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'bulk' });
       results.push({ success: result.success });
