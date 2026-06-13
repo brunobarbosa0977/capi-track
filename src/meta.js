@@ -24,13 +24,6 @@ function normalizeGender(gender) {
   return null;
 }
 
-/**
- * Dispara evento Purchase via Meta CAPI.
- *
- * @param {object} cfg  - { pixel_id, access_token, page_id }
- * @param {object} data - campos do lead
- * @param {string} [data.ctwa_clid] - token de sessão do WhatsApp Ads (opcional)
- */
 async function sendPurchase(cfg, data) {
   const { name, phone, email, value, gender, cep, city, state, ctwa_clid } = data;
   const { pixel_id, access_token, page_id } = cfg;
@@ -58,30 +51,31 @@ async function sendPurchase(cfg, data) {
 
   userData.country = [hash('br')];
 
-  // ── ctwa_clid — obrigatório para campanhas WhatsApp Ads ───────────────────
-  // Enviado em claro (não hashear) conforme especificação da Meta
-  // Deve vir acompanhado do page_id da página Facebook vinculada ao WhatsApp
+  // ctwa_clid vai em user_data — enviado em claro (não hashear)
   if (ctwa_clid) {
     userData.ctwa_clid = ctwa_clid;
-    if (page_id) userData.page_id = page_id;
   }
 
-  // ── payload ────────────────────────────────────────────────────────────────
+  // ── evento base ────────────────────────────────────────────────────────────
   const eventId = crypto.randomBytes(16).toString('hex');
 
-  const payload = {
-    data: [{
-      event_name:    'Purchase',
-      event_time:    Math.floor(Date.now() / 1000),
-      event_id:      eventId,
-      // CORREÇÃO: action_source deve ser 'business_messaging' para campanhas
-      // com destino WhatsApp — não 'website'. Isso permite que o Meta associe
-      // corretamente o evento à conversa de WhatsApp e ao ctwa_clid.
-      action_source: 'business_messaging',
-      user_data:     userData,
-      custom_data:   { currency: 'BRL', value: parseFloat(value) }
-    }]
+  const event = {
+    event_name:    'Purchase',
+    event_time:    Math.floor(Date.now() / 1000),
+    event_id:      eventId,
+    action_source: 'business_messaging',
+    user_data:     userData,
+    custom_data:   { currency: 'BRL', value: parseFloat(value) }
   };
+
+  // ── campos obrigatórios para Dataset de Mensagens ─────────────────────────
+  // messaging_channel e page_id ficam no nível do evento — não em user_data
+  if (page_id) {
+    event.messaging_channel = 'whatsapp';
+    event.page_id           = page_id;
+  }
+
+  const payload = { data: [event] };
 
   try {
     const url = 'https://graph.facebook.com/v19.0/' + pixel_id + '/events?access_token=' + access_token;
