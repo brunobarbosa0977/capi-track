@@ -285,12 +285,36 @@ app.post('/webhook/:token', async function(req, res) {
   try {
     const cfg = await db.getConfig();
     if (!cfg || req.params.token !== cfg.webhook_token) return res.status(403).json({ error: 'Webhook invalido' });
-    const { name, phone, email, value, gender, cep, city, state, pixel_id } = req.body;
+
+    // Lê de body (JSON) OU de query params (Datacrazy envia como parâmetros)
+    const src = (req.body && Object.keys(req.body).length > 0) ? req.body : req.query;
+    const name          = src.name       || '';
+    const phone         = src.phone      || '';
+    const email         = src.email      || '';
+    const value         = src.value      || '';
+    const gender        = src.gender     || '';
+    const cep           = src.cep        || '';
+    const city          = src.city       || '';
+    const state         = src.state      || '';
+    const pixel_id      = src.pixel_id   || '';
+    const ctwa_incoming = src.ctwa_clid  || null;
+
+    // Se tem ctwa_clid mas não tem value — apenas salva o ctwa_clid (Datacrazy)
+    if (ctwa_incoming && phone && !value) {
+      await db.saveCtwaClid(phone, ctwa_incoming);
+      console.log('[Webhook] ctwa_clid salvo para ' + phone + ': ' + ctwa_incoming.substring(0, 20) + '...');
+      return res.status(200).json({ ok: true, saved: 'ctwa_clid' });
+    }
+
     if (!phone || !value) return res.status(400).json({ error: 'phone e value sao obrigatorios' });
     let pixelCfg = pixel_id ? await db.getPixelById(pixel_id) : (await db.getPixels())[0];
     if (!pixelCfg) return res.status(400).json({ error: 'Nenhum pixel configurado' });
-    const ctwa_clid = await db.getCtwaClid(phone);
-    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep, city: city||'', state: state||'', ctwa_clid: ctwa_clid||null });
+
+    // Busca ctwa_clid pelo número se não veio no payload
+    const ctwa_clid = ctwa_incoming || await db.getCtwaClid(phone);
+    console.log('[Webhook] phone=' + phone + ' ctwa=' + (ctwa_clid ? 'SIM' : 'NAO') + ' pixel=' + pixelCfg.name);
+
+    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep, city, state, ctwa_clid: ctwa_clid||null });
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
     res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
