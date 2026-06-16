@@ -95,7 +95,7 @@ async function sendPurchase(cfg, data) {
   }));
 
   try {
-    const url = 'https://graph.facebook.com/v19.0/' + pixel_id + '/events?access_token=' + access_token;
+    const url = 'https://graph.facebook.com/v22.0/' + pixel_id + '/events?access_token=' + access_token;
     const response = await fetch(url, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
