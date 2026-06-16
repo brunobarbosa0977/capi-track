@@ -37,7 +37,7 @@ async function sendPurchase(cfg, data) {
 
   // Detecta se é Dataset de Mensagens (tem waba_id ou page_id preenchido)
   // page_id no Infinity Track pode ser usado para guardar o WABA ID
-  const isMessagingDataset = !!(ctwa_clid || (page_id && page_id.length > 5));
+  const isMessagingDataset = !!(page_id && page_id.length > 5);
 
   // ── user_data ──────────────────────────────────────────────────────────────
   const userData = {};
