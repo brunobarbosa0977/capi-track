@@ -24,9 +24,20 @@ function normalizeGender(gender) {
   return null;
 }
 
+/**
+ * Dispara evento Purchase via Meta CAPI.
+ *
+ * cfg.waba_id  → Dataset de Mensagens vinculado ao WABA (action_source: business_messaging)
+ * cfg.page_id  → usado como page_id no evento (opcional)
+ * sem waba_id  → Pixel de site normal (action_source: website)
+ */
 async function sendPurchase(cfg, data) {
   const { name, phone, email, value, gender, cep, city, state, ctwa_clid } = data;
   const { pixel_id, access_token, page_id } = cfg;
+
+  // Detecta se é Dataset de Mensagens (tem waba_id ou page_id preenchido)
+  // page_id no Infinity Track pode ser usado para guardar o WABA ID
+  const isMessagingDataset = !!(ctwa_clid || (page_id && page_id.length > 5));
 
   // ── user_data ──────────────────────────────────────────────────────────────
   const userData = {};
@@ -51,7 +62,7 @@ async function sendPurchase(cfg, data) {
 
   userData.country = [hash('br')];
 
-  // ctwa_clid — enviado em claro (não hashear) conforme spec do Meta
+  // ctwa_clid — apenas para Dataset de Mensagens, enviado em claro
   if (ctwa_clid) {
     userData.ctwa_clid = ctwa_clid;
   }
@@ -60,39 +71,31 @@ async function sendPurchase(cfg, data) {
   const eventId = crypto.randomBytes(16).toString('hex');
 
   const event = {
-    event_name:        'Purchase',
-    event_time:        Math.floor(Date.now() / 1000),
-    event_id:          eventId,
-    action_source:     'business_messaging',
-    messaging_channel: 'whatsapp',
-    user_data:         userData,
-    custom_data:       { currency: 'BRL', value: parseFloat(value) }
+    event_name:  'Purchase',
+    event_time:  Math.floor(Date.now() / 1000),
+    event_id:    eventId,
+    user_data:   userData,
+    custom_data: { currency: 'BRL', value: parseFloat(value) }
   };
 
-  // page_id no nível do evento — necessário para associação com página
-  if (page_id) {
-    event.page_id = page_id;
+  if (isMessagingDataset) {
+    // ── Modo Dataset de Mensagens (WABA) ────────────────────────────────────
+    event.action_source     = 'business_messaging';
+    event.messaging_channel = 'whatsapp';
+    event.messaging_outcome_data = { outcome_type: 'purchase' };
+    if (page_id) event.page_id = page_id;
+  } else {
+    // ── Modo Pixel de Site (MASTER COMPRAS, etc) ────────────────────────────
+    event.action_source = 'website';
   }
-
-  // messaging_outcome_data — obrigatório para Dataset de Mensagens
-  // outcome_type pode ser: 'purchase', 'lead', 'other'
-  event.messaging_outcome_data = {
-    outcome_type: 'purchase'
-  };
 
   const payload = { data: [event] };
 
-  // Log do payload para debug
-  console.log('[Meta CAPI] Payload:', JSON.stringify({
-    pixel_id: pixel_id,
-    event_name: event.event_name,
-    action_source: event.action_source,
-    messaging_channel: event.messaging_channel,
-    has_ctwa_clid: !!ctwa_clid,
-    has_page_id: !!page_id,
-    messaging_outcome_data: event.messaging_outcome_data,
-    user_data_keys: Object.keys(userData)
-  }));
+  // Log para debug
+  console.log('[Meta CAPI] pixel=' + pixel_id +
+    ' mode=' + (isMessagingDataset ? 'MESSAGING' : 'WEBSITE') +
+    ' ctwa=' + (ctwa_clid ? 'SIM' : 'NAO') +
+    ' page_id=' + (page_id || 'NAO'));
 
   try {
     const url = 'https://graph.facebook.com/v22.0/' + pixel_id + '/events?access_token=' + access_token;
@@ -105,7 +108,7 @@ async function sendPurchase(cfg, data) {
     const result = await response.json();
 
     if (result.error) {
-      console.log('[Meta CAPI] Erro raw:', JSON.stringify(result.error));
+      console.log('[Meta CAPI] Erro: ' + JSON.stringify(result.error));
       return {
         success:   false,
         error:     result.error.message + ' (code: ' + result.error.code + ', subcode: ' + (result.error.error_subcode || 'n/a') + ')',
@@ -113,10 +116,12 @@ async function sendPurchase(cfg, data) {
       };
     }
 
+    console.log('[Meta CAPI] Sucesso fbtrace=' + result.fbtrace_id);
     return {
       success:         true,
       events_received: result.events_received,
       fbtrace_id:      result.fbtrace_id,
+      mode:            isMessagingDataset ? 'messaging' : 'website',
       ctwa_clid_used:  !!ctwa_clid
     };
 
