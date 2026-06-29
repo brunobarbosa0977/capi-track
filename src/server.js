@@ -67,16 +67,16 @@ app.post('/api/change-password', auth, async function(req, res) {
 app.get('/api/pixels', auth, async function(req, res) {
   try {
     const pixels = await db.getPixels();
-    res.json(pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id, created_at: p.created_at }; }));
+    res.json(pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id, page_id: p.page_id || '', created_at: p.created_at }; }));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/pixels', auth, async function(req, res) {
   try {
-    const id = req.body.id, name = req.body.name, pixel_id = req.body.pixel_id, access_token = req.body.access_token;
+    const id = req.body.id, name = req.body.name, pixel_id = req.body.pixel_id, access_token = req.body.access_token, page_id = req.body.page_id || '';
     if (!name || !pixel_id || !access_token) return res.status(400).json({ error: 'Todos os campos sao obrigatorios' });
-    const pixels = await db.savePixel({ id, name, pixel_id, access_token });
-    res.json({ ok: true, pixels: pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id }; }) });
+    const pixels = await db.savePixel({ id, name, pixel_id, access_token, page_id });
+    res.json({ ok: true, pixels: pixels.map(function(p) { return { id: p.id, name: p.name, pixel_id: p.pixel_id, page_id: p.page_id || '' }; }) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -172,112 +172,6 @@ app.delete('/api/spy/logs', async function(req, res) {
 initSpyDB().catch(console.error);
 
 // =============================================================================
-// CAPTURA CTWA_CLID — WHATSAPP CLOUD API (referral de clique para WhatsApp)
-// =============================================================================
-
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'infinity_verify_2026';
-
-function waPool() {
-  const { Pool } = require('pg');
-  return new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-}
-
-async function initWaDB() {
-  const pool = waPool();
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS whatsapp_clicks (
-        id          SERIAL PRIMARY KEY,
-        phone       VARCHAR(30) NOT NULL,
-        ctwa_clid   VARCHAR(500),
-        source_id   VARCHAR(100),
-        headline    VARCHAR(255),
-        body_text   TEXT,
-        created_at  TIMESTAMP DEFAULT NOW()
-      );
-      CREATE INDEX IF NOT EXISTS idx_wa_phone ON whatsapp_clicks(phone);
-      CREATE INDEX IF NOT EXISTS idx_wa_created ON whatsapp_clicks(created_at DESC);
-    `);
-    console.log('[WA Cloud API] Tabela pronta');
-  } catch(e) {
-    console.error('[WA Cloud API] Erro ao criar tabela:', e.message);
-  } finally {
-    await pool.end();
-  }
-}
-
-// Normaliza telefone para o padrão "55DDDNUMERO" (mesmo formato do wa_id da Cloud API)
-function normalizeWaPhone(phone) {
-  let p = String(phone || '').replace(/\D/g, '');
-  if (p.indexOf('55') !== 0) p = '55' + p;
-  return p;
-}
-
-// GET /webhook/whatsapp — verificação do webhook (handshake da Meta)
-app.get('/webhook/whatsapp', function(req, res) {
-  const mode      = req.query['hub.mode'];
-  const token     = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-  if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
-    console.log('[WA Cloud API] Webhook verificado com sucesso');
-    return res.status(200).send(challenge);
-  }
-  res.sendStatus(403);
-});
-
-// POST /webhook/whatsapp — recebe mensagens e captura o ctwa_clid (referral)
-app.post('/webhook/whatsapp', async function(req, res) {
-  try {
-    const entry   = (req.body.entry || [])[0];
-    const change  = entry && (entry.changes || [])[0];
-    const value   = change && change.value;
-    const message = value && (value.messages || [])[0];
-
-    if (message && message.referral && message.referral.ctwa_clid) {
-      const phone     = normalizeWaPhone(message.from);
-      const referral  = message.referral;
-      const pool = waPool();
-      try {
-        await pool.query(
-          'INSERT INTO whatsapp_clicks (phone, ctwa_clid, source_id, headline, body_text) VALUES ($1,$2,$3,$4,$5)',
-          [phone, referral.ctwa_clid, referral.source_id || null, referral.headline || null, referral.body || null]
-        );
-        console.log('[WA Cloud API] ctwa_clid capturado → ' + phone + ' | clid=' + referral.ctwa_clid);
-      } finally {
-        await pool.end();
-      }
-    }
-
-    res.sendStatus(200);
-  } catch(err) {
-    console.error('[WA Cloud API] Erro ao processar webhook:', err.message);
-    res.sendStatus(200); // sempre 200 para a Meta não reenviar
-  }
-});
-
-// Busca o ctwa_clid mais recente para um telefone (janela de 7 dias, igual ao padrão de atribuição da Meta)
-async function getCtwaClidByPhone(phone) {
-  const pool = waPool();
-  try {
-    const wa = normalizeWaPhone(phone);
-    const r = await pool.query(
-      `SELECT ctwa_clid FROM whatsapp_clicks
-       WHERE phone = $1 AND created_at >= NOW() - INTERVAL '7 days'
-       ORDER BY created_at DESC LIMIT 1`,
-      [wa]
-    );
-    return r.rows.length ? r.rows[0].ctwa_clid : null;
-  } catch(e) {
-    console.error('[WA Cloud API] Erro ao buscar ctwa_clid:', e.message);
-    return null;
-  } finally {
-    await pool.end();
-  }
-}
-
-initWaDB().catch(console.error);
-
-// =============================================================================
 // WEBHOOK FIVE DELIVERY — disparo automático de Purchase na Meta CAPI
 // Deve vir ANTES de /webhook/:token
 // =============================================================================
@@ -304,6 +198,8 @@ function parseFiveDelivery(body) {
     phone:  phone,
     email:  String(c.mail  || '').trim(),
     cep:    cep,
+    city:   String(addr.city  || '').trim(),
+    state:  String(addr.state || '').trim(),
     value:  value,
     gender: ''
   };
@@ -333,10 +229,10 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
       return res.status(200).json({ ok: true, ignored: true, reason: 'sem telefone' });
     }
 
-    // Busca o ctwa_clid capturado quando a pessoa clicou no anúncio e abriu o WhatsApp
-    const ctwa_clid = await getCtwaClidByPhone(lead.phone);
-    if (ctwa_clid) lead.ctwa_clid = ctwa_clid;
-    console.log('[FiveDelivery] ctwa_clid ' + (ctwa_clid ? 'encontrado: ' + ctwa_clid : 'não encontrado para ' + lead.phone));
+    // Busca o ctwa_clid capturado pelo Datacrazy na primeira mensagem desse telefone
+    const ctwa_clid = await db.getCtwaClid(lead.phone);
+    lead.ctwa_clid = ctwa_clid || null;
+    console.log('[FiveDelivery] ctwa_clid ' + (ctwa_clid ? 'encontrado: ' + ctwa_clid.substring(0,20) + '...' : 'não encontrado para ' + lead.phone));
 
     // Dispara para todos os pixels cadastrados simultaneamente
     const pixels = await db.getPixels();
@@ -366,7 +262,7 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
     }));
 
     const sent = results.filter(function(r) { return r.success; }).length;
-    res.status(200).json({ ok: true, sent: sent, total: pixels.length, phone: lead.phone, value: lead.value, results: results });
+    res.status(200).json({ ok: true, sent: sent, total: pixels.length, phone: lead.phone, value: lead.value, ctwa_clid_used: !!ctwa_clid, results: results });
 
   } catch(e) {
     console.error('[FiveDelivery] Erro:', e.message);
@@ -383,15 +279,6 @@ app.get('/api/five-delivery/webhook-url', auth, async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/whatsapp/webhook-info — retorna URL e Verify Token para configurar no App da Meta
-app.get('/api/whatsapp/webhook-info', auth, function(req, res) {
-  const base = process.env.BASE_URL || ('http://localhost:' + PORT);
-  res.json({
-    url: base + '/webhook/whatsapp',
-    verify_token: WHATSAPP_VERIFY_TOKEN
-  });
-});
-
 // ─── WEBHOOK (META) — genérico, deve vir DEPOIS dos webhooks específicos ──────
 app.get('/api/webhook-url', auth, async function(req, res) {
   try {
@@ -405,11 +292,30 @@ app.post('/webhook/:token', async function(req, res) {
   try {
     const cfg = await db.getConfig();
     if (!cfg || req.params.token !== cfg.webhook_token) return res.status(403).json({ error: 'Webhook invalido' });
-    const { name, phone, email, value, gender, cep, pixel_id } = req.body;
-    if (!phone || !value) return res.status(400).json({ error: 'phone e value sao obrigatorios' });
+
+    // Datacrazy manda como query params, não como JSON body — aceita os dois
+    const data = Object.assign({}, req.query, req.body);
+    const { name, phone, email, value, gender, cep, city, state, pixel_id, ctwa_clid } = data;
+
+    if (!phone) return res.status(400).json({ error: 'phone e obrigatorio' });
+
+    // ── Caso 1: chegou phone + ctwa_clid SEM value → é a primeira mensagem, só salva o clique ──
+    if (!value && ctwa_clid) {
+      await db.saveCtwaClid(phone, ctwa_clid);
+      console.log('[Webhook] ctwa_clid salvo → ' + phone + ': ' + ctwa_clid.substring(0, 20) + '...');
+      return res.json({ ok: true, saved: 'ctwa_clid', phone: phone });
+    }
+
+    // ── Caso 2: sem value e sem ctwa_clid → nada a fazer ──
+    if (!value) {
+      return res.status(400).json({ error: 'value e obrigatorio para disparar Purchase (ou envie ctwa_clid para apenas salvar o clique)' });
+    }
+
+    // ── Caso 3: pedido completo → dispara Purchase normalmente ──
     let pixelCfg = pixel_id ? await db.getPixelById(pixel_id) : (await db.getPixels())[0];
     if (!pixelCfg) return res.status(400).json({ error: 'Nenhum pixel configurado' });
-    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
+    const savedCtwa = ctwa_clid || await db.getCtwaClid(phone);
+    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep, city: city||'', state: state||'', ctwa_clid: savedCtwa||null });
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'webhook' });
     res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -418,12 +324,22 @@ app.post('/webhook/:token', async function(req, res) {
 // ─── ENVIO MANUAL / BULK (META) ───────────────────────────────────────────────
 app.post('/api/send', auth, async function(req, res) {
   try {
-    const { name, phone, email, value, gender, cep, pixel_id } = req.body;
+    const { name, phone, email, value, gender, cep, city, state, pixel_id } = req.body;
     if (!phone || !value) return res.status(400).json({ error: 'Telefone e valor sao obrigatorios' });
     if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
     const pixelCfg = await db.getPixelById(pixel_id);
     if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
-    const result = await metaApi.sendPurchase(pixelCfg, { name, phone, email, value, gender, cep });
+    // Busca ctwa_clid pelo número do cliente
+    const ctwa_clid = await db.getCtwaClid(phone);
+    if (ctwa_clid) {
+      console.log('[Send] ctwa_clid encontrado para ' + phone + ': ' + ctwa_clid.substring(0, 20) + '...');
+    } else {
+      console.log('[Send] Nenhum ctwa_clid encontrado para ' + phone);
+    }
+    const lead = { name, phone, email, value, gender, cep, city: city || '', state: state || '', ctwa_clid: ctwa_clid || null };
+    console.log('[Send] Disparando Purchase → pixel: ' + pixelCfg.name + ' | phone: ' + phone + ' | value: ' + value + ' | ctwa: ' + (ctwa_clid ? 'SIM' : 'NAO') + ' | page_id: ' + (pixelCfg.page_id || 'NAO'));
+    const result = await metaApi.sendPurchase(pixelCfg, lead);
+    console.log('[Send] Resultado: ' + (result.success ? 'SUCESSO fbtrace:' + result.fbtrace_id : 'ERRO: ' + result.error));
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
     res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -471,12 +387,15 @@ app.post('/api/send-bulk', auth, upload.single('file'), async function(req, res)
     const normalize = function(row) {
       const k = {};
       Object.keys(row).forEach(function(key) { k[key.toLowerCase().trim()] = row[key]; });
-      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'' };
+      return { name: k.nome||k.name||'', phone: k.telefone||k.phone||k.fone||'', email: k.email||'', value: parseFloat(k.valor||k.value||0)||0, gender: k.genero||k.gender||k.sexo||'', cep: k.cep||k.zip||'', city: k.cidade||k.city||'', state: k.estado||k.state||'' };
     };
     const results = [];
     for (let i = 0; i < rows.length; i++) {
       const lead = normalize(rows[i]);
       if (!lead.phone || !lead.value) { results.push({ success: false, error: 'Telefone ou valor ausente' }); continue; }
+      // Busca ctwa_clid pelo número
+      const ctwa_clid = await db.getCtwaClid(lead.phone);
+      lead.ctwa_clid = ctwa_clid || null;
       const result = await metaApi.sendPurchase(pixelCfg, lead);
       await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name: lead.name, phone: lead.phone, email: lead.email, value: lead.value, gender: lead.gender, cep: lead.cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'bulk' });
       results.push({ success: result.success });
@@ -496,6 +415,18 @@ app.get('/api/events', auth, async function(req, res) {
 app.get('/api/stats', auth, async function(req, res) {
   try {
     res.json(await db.getStats(req.query.pixel_id));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/ctwa-leads — lista leads com ctwa_clid capturado
+app.get('/api/ctwa-leads', auth, async function(req, res) {
+  try {
+    var limit  = parseInt(req.query.limit  || 50);
+    var page   = parseInt(req.query.page   || 1);
+    var offset = (page - 1) * limit;
+    var phone  = req.query.phone || null;
+    var result = await db.getCtwaLeads({ limit: limit, offset: offset, phone: phone });
+    res.json(result);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
