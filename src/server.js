@@ -200,6 +200,7 @@ function parseFiveDelivery(body) {
     cep:    cep,
     city:   String(addr.city  || '').trim(),
     state:  String(addr.state || '').trim(),
+    cpf:    String(c.document || '').replace(/\D/g, ''),
     value:  value,
     gender: ''
   };
