@@ -32,7 +32,7 @@ function normalizeGender(gender) {
  * sem waba_id  → Pixel de site normal (action_source: website)
  */
 async function sendPurchase(cfg, data) {
-  const { name, phone, email, value, gender, cep, city, state, ctwa_clid } = data;
+  const { name, phone, email, value, gender, cep, city, state, ctwa_clid, cpf } = data;
   const { pixel_id, access_token, page_id } = cfg;
 
   // Detecta se é Dataset de Mensagens (tem waba_id ou page_id preenchido)
@@ -61,6 +61,13 @@ async function sendPurchase(cfg, data) {
   }
 
   userData.country = [hash('br')];
+
+  // external_id — usado para enviar o CPF do cliente (a Meta nao tem campo nativo "cpf",
+  // a pratica padrao no Brasil eh usar external_id para esse identificador)
+  if (cpf) {
+    const cpfLimpo = cpf.toString().replace(/\D/g, '');
+    if (cpfLimpo) userData.external_id = [hash(cpfLimpo)];
+  }
 
   // ctwa_clid — apenas para Dataset de Mensagens, enviado em claro
   if (ctwa_clid) {
@@ -95,6 +102,7 @@ async function sendPurchase(cfg, data) {
   console.log('[Meta CAPI] pixel=' + pixel_id +
     ' mode=' + (isMessagingDataset ? 'MESSAGING' : 'WEBSITE') +
     ' ctwa=' + (ctwa_clid ? 'SIM' : 'NAO') +
+    ' cpf=' + (cpf ? 'SIM' : 'NAO') +
     ' page_id=' + (page_id || 'NAO'));
 
   try {
