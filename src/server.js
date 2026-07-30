@@ -274,7 +274,7 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
 app.get('/api/five-delivery/webhook-url', auth, async function(req, res) {
   try {
     const cfg = await db.getConfig();
-    const base = process.env.BASE_URL || (req.protocol + '://' + req.get('host'));
+    const base = process.env.BASE_URL || ('http://localhost:' + PORT);
     res.json({ url: base + '/webhook/five-delivery/' + cfg.webhook_token });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -283,11 +283,8 @@ app.get('/api/five-delivery/webhook-url', auth, async function(req, res) {
 app.get('/api/webhook-url', auth, async function(req, res) {
   try {
     const cfg = await db.getConfig();
-    const base = process.env.BASE_URL || (req.protocol + '://' + req.get('host'));
-    res.json({
-      url:               base + '/webhook/' + cfg.webhook_token,
-      url_five_delivery: base + '/webhook/five-delivery/' + cfg.webhook_token
-    });
+    const base = process.env.BASE_URL || ('http://localhost:' + PORT);
+    res.json({ url: base + '/webhook/' + cfg.webhook_token });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -327,20 +324,19 @@ app.post('/webhook/:token', async function(req, res) {
 // ─── ENVIO MANUAL / BULK (META) ───────────────────────────────────────────────
 app.post('/api/send', auth, async function(req, res) {
   try {
-    const { name, phone, email, value, gender, cep, city, state, pixel_id } = req.body;
+    const { name, phone, email, value, gender, cep, city, state, pixel_id, test_event_code } = req.body;
     if (!phone || !value) return res.status(400).json({ error: 'Telefone e valor sao obrigatorios' });
     if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
     const pixelCfg = await db.getPixelById(pixel_id);
     if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
-    // Busca ctwa_clid pelo número do cliente
     const ctwa_clid = await db.getCtwaClid(phone);
     if (ctwa_clid) {
       console.log('[Send] ctwa_clid encontrado para ' + phone + ': ' + ctwa_clid.substring(0, 20) + '...');
     } else {
       console.log('[Send] Nenhum ctwa_clid encontrado para ' + phone);
     }
-    const lead = { name, phone, email, value, gender, cep, city: city || '', state: state || '', ctwa_clid: ctwa_clid || null };
-    console.log('[Send] Disparando Purchase → pixel: ' + pixelCfg.name + ' | phone: ' + phone + ' | value: ' + value + ' | ctwa: ' + (ctwa_clid ? 'SIM' : 'NAO') + ' | page_id: ' + (pixelCfg.page_id || 'NAO'));
+    const lead = { name, phone, email, value, gender, cep, city: city || '', state: state || '', ctwa_clid: ctwa_clid || null, test_event_code: test_event_code || null };
+    console.log('[Send] Disparando Purchase → pixel: ' + pixelCfg.name + ' | phone: ' + phone + ' | value: ' + value + ' | ctwa: ' + (ctwa_clid ? 'SIM' : 'NAO') + ' | test: ' + (test_event_code || 'NAO') + ' | page_id: ' + (pixelCfg.page_id || 'NAO'));
     const result = await metaApi.sendPurchase(pixelCfg, lead);
     console.log('[Send] Resultado: ' + (result.success ? 'SUCESSO fbtrace:' + result.fbtrace_id : 'ERRO: ' + result.error));
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
