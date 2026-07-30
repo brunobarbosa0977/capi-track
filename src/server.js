@@ -200,7 +200,6 @@ function parseFiveDelivery(body) {
     cep:    cep,
     city:   String(addr.city  || '').trim(),
     state:  String(addr.state || '').trim(),
-    cpf:    String(c.document || '').replace(/\D/g, ''),
     value:  value,
     gender: ''
   };
@@ -275,7 +274,7 @@ app.post('/webhook/five-delivery/:token', async function(req, res) {
 app.get('/api/five-delivery/webhook-url', auth, async function(req, res) {
   try {
     const cfg = await db.getConfig();
-    const base = process.env.BASE_URL || ('http://localhost:' + PORT);
+    const base = process.env.BASE_URL || (req.protocol + '://' + req.get('host'));
     res.json({ url: base + '/webhook/five-delivery/' + cfg.webhook_token });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -284,8 +283,11 @@ app.get('/api/five-delivery/webhook-url', auth, async function(req, res) {
 app.get('/api/webhook-url', auth, async function(req, res) {
   try {
     const cfg = await db.getConfig();
-    const base = process.env.BASE_URL || ('http://localhost:' + PORT);
-    res.json({ url: base + '/webhook/' + cfg.webhook_token });
+    const base = process.env.BASE_URL || (req.protocol + '://' + req.get('host'));
+    res.json({
+      url:               base + '/webhook/' + cfg.webhook_token,
+      url_five_delivery: base + '/webhook/five-delivery/' + cfg.webhook_token
+    });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
