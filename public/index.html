@@ -316,10 +316,16 @@ tr:hover td{background:rgba(255,255,255,0.02);}
         </div>
         <div class="CD">
           <div class="CDT">Webhook para Automacao</div>
-          <p style="font-size:12px;color:var(--mut);margin-bottom:4px">Integre com N8n, Make ou Manychat.</p>
+          <p style="font-size:12px;color:var(--mut);margin-bottom:4px">Integre com N8n, Make ou Datacrazy.</p>
           <div class="WB" id="webhook-url">Carregando...<button class="CB" onclick="copyWebhook()">Copiar</button></div>
           <div style="margin-top:16px;font-size:12px;color:var(--mut);font-weight:500;margin-bottom:6px">Formato POST JSON:</div>
           <div class="PB">{"name":"Joao","phone":"5562999999999",<br>"value":197,"gender":"M","cep":"74000000",<br>"pixel_id":"ID_DO_PIXEL"}</div>
+
+          <div style="margin-top:20px">
+            <div class="CDT" style="font-size:13px">Webhook Five Delivery</div>
+            <p style="font-size:12px;color:var(--mut);margin-bottom:6px">Cole esta URL no campo de webhook de Pedido Criado da Five Delivery.</p>
+            <div class="WB" id="webhook-url-fd">Carregando...<button class="CB" id="btn-copy-fd" onclick="copyWebhookFD()">Copiar</button></div>
+          </div>
         </div>
       </div>
     </div>
@@ -646,12 +652,22 @@ function loadWebhookUrl() {
     if (data && data.url) {
       document.getElementById("webhook-url").innerHTML = data.url + "<button class=\"CB\" onclick=\"copyWebhook('" + data.url + "')\">Copiar</button>";
     }
+    if (data && data.url_five_delivery) {
+      document.getElementById("webhook-url-fd").innerHTML = data.url_five_delivery + "<button class=\"CB\" id=\"btn-copy-fd\" onclick=\"copyWebhookFD('" + data.url_five_delivery + "')\">Copiar</button>";
+    }
   });
 }
 
 function copyWebhook(url) {
   navigator.clipboard.writeText(url).then(function() {
     var b = document.querySelector("#webhook-url .CB");
+    if (b) { b.textContent = "Copiado!"; setTimeout(function() { b.textContent = "Copiar"; }, 2000); }
+  });
+}
+
+function copyWebhookFD(url) {
+  navigator.clipboard.writeText(url).then(function() {
+    var b = document.getElementById("btn-copy-fd");
     if (b) { b.textContent = "Copiado!"; setTimeout(function() { b.textContent = "Copiar"; }, 2000); }
   });
 }
