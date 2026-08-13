@@ -306,9 +306,10 @@ app.post('/webhook/:token', async function(req, res) {
       return res.json({ ok: true, saved: 'ctwa_clid', phone: phone });
     }
 
-    // ── Caso 2: sem value e sem ctwa_clid → nada a fazer ──
+    // ── Caso 2: sem value e sem ctwa_clid → lead orgânico, ignora silenciosamente ──
     if (!value) {
-      return res.status(400).json({ error: 'value e obrigatorio para disparar Purchase (ou envie ctwa_clid para apenas salvar o clique)' });
+      console.log('[Webhook] Sem value e sem ctwa_clid para ' + phone + ' — lead orgânico, ignorado.');
+      return res.status(200).json({ ok: true, ignored: true, reason: 'sem value e sem ctwa_clid' });
     }
 
     // ── Caso 3: pedido completo → dispara Purchase normalmente ──
@@ -324,19 +325,20 @@ app.post('/webhook/:token', async function(req, res) {
 // ─── ENVIO MANUAL / BULK (META) ───────────────────────────────────────────────
 app.post('/api/send', auth, async function(req, res) {
   try {
-    const { name, phone, email, value, gender, cep, city, state, pixel_id, test_event_code } = req.body;
+    const { name, phone, email, value, gender, cep, city, state, pixel_id } = req.body;
     if (!phone || !value) return res.status(400).json({ error: 'Telefone e valor sao obrigatorios' });
     if (!pixel_id) return res.status(400).json({ error: 'Selecione um pixel' });
     const pixelCfg = await db.getPixelById(pixel_id);
     if (!pixelCfg) return res.status(400).json({ error: 'Pixel nao encontrado' });
+    // Busca ctwa_clid pelo número do cliente
     const ctwa_clid = await db.getCtwaClid(phone);
     if (ctwa_clid) {
       console.log('[Send] ctwa_clid encontrado para ' + phone + ': ' + ctwa_clid.substring(0, 20) + '...');
     } else {
       console.log('[Send] Nenhum ctwa_clid encontrado para ' + phone);
     }
-    const lead = { name, phone, email, value, gender, cep, city: city || '', state: state || '', ctwa_clid: ctwa_clid || null, test_event_code: test_event_code || null };
-    console.log('[Send] Disparando Purchase → pixel: ' + pixelCfg.name + ' | phone: ' + phone + ' | value: ' + value + ' | ctwa: ' + (ctwa_clid ? 'SIM' : 'NAO') + ' | test: ' + (test_event_code || 'NAO') + ' | page_id: ' + (pixelCfg.page_id || 'NAO'));
+    const lead = { name, phone, email, value, gender, cep, city: city || '', state: state || '', ctwa_clid: ctwa_clid || null };
+    console.log('[Send] Disparando Purchase → pixel: ' + pixelCfg.name + ' | phone: ' + phone + ' | value: ' + value + ' | ctwa: ' + (ctwa_clid ? 'SIM' : 'NAO') + ' | page_id: ' + (pixelCfg.page_id || 'NAO'));
     const result = await metaApi.sendPurchase(pixelCfg, lead);
     console.log('[Send] Resultado: ' + (result.success ? 'SUCESSO fbtrace:' + result.fbtrace_id : 'ERRO: ' + result.error));
     await db.insertEvent({ pixel_id: pixelCfg.id, pixel_name: pixelCfg.name, name, phone, email, value, gender, cep, status: result.success ? 'sent' : 'error', error_msg: result.error || null, source: 'manual' });
