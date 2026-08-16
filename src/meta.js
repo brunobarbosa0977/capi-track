@@ -32,7 +32,7 @@ function normalizeGender(gender) {
  * sem waba_id  → Pixel de site normal (action_source: website)
  */
 async function sendPurchase(cfg, data) {
-  const { name, phone, email, value, gender, cep, city, state, ctwa_clid } = data;
+  const { name, phone, email, value, gender, cep, city, state, ctwa_clid, cpf, test_event_code } = data;
   const { pixel_id, access_token, page_id } = cfg;
 
   // Detecta se é Dataset de Mensagens (tem waba_id ou page_id preenchido)
@@ -62,7 +62,13 @@ async function sendPurchase(cfg, data) {
 
   userData.country = [hash('br')];
 
-  // ctwa_clid — apenas para Dataset de Mensagens, enviado em claro
+  // external_id — CPF do cliente hasheado (identificador único brasileiro)
+  if (cpf) {
+    const cpfLimpo = cpf.toString().replace(/\D/g, '');
+    if (cpfLimpo) userData.external_id = [hash(cpfLimpo)];
+  }
+
+  // ctwa_clid — enviado em claro (sem hash), conforme documentação Meta
   if (ctwa_clid) {
     userData.ctwa_clid = ctwa_clid;
   }
@@ -91,11 +97,13 @@ async function sendPurchase(cfg, data) {
   }
 
   const payload = { data: [event] };
+  if (test_event_code) payload.test_event_code = test_event_code;
 
   // Log para debug
   console.log('[Meta CAPI] pixel=' + pixel_id +
     ' mode=' + (isMessagingDataset ? 'MESSAGING' : 'WEBSITE') +
     ' ctwa=' + (ctwa_clid ? 'SIM' : 'NAO') +
+    ' cpf=' + (cpf ? 'SIM' : 'NAO') +
     ' page_id=' + (page_id || 'NAO'));
 
   try {
