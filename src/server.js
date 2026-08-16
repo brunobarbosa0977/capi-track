@@ -189,6 +189,9 @@ function parseFiveDelivery(body) {
   // CEP: apenas dígitos
   const cep = String(addr.zipCode || '').replace(/\D/g, '');
 
+  // CPF: apenas dígitos (customer.document)
+  const cpf = String(c.document || '').replace(/\D/g, '');
+
   // Valor: usa product.offer.price (já em reais conforme payload)
   const value = parseFloat(offer.price || 0) || 0;
 
@@ -200,6 +203,7 @@ function parseFiveDelivery(body) {
     cep:    cep,
     city:   String(addr.city  || '').trim(),
     state:  String(addr.state || '').trim(),
+    cpf:    cpf,
     value:  value,
     gender: ''
   };
