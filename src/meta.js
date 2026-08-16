@@ -32,7 +32,7 @@ function normalizeGender(gender) {
  * sem waba_id  → Pixel de site normal (action_source: website)
  */
 async function sendPurchase(cfg, data) {
-  const { name, phone, email, value, gender, cep, city, state, ctwa_clid, cpf, test_event_code } = data;
+  const { name, phone, email, value, gender, cep, city, state, ctwa_clid } = data;
   const { pixel_id, access_token, page_id } = cfg;
 
   // Detecta se é Dataset de Mensagens (tem waba_id ou page_id preenchido)
@@ -80,17 +80,17 @@ async function sendPurchase(cfg, data) {
 
   if (isMessagingDataset) {
     // ── Modo Dataset de Mensagens (WABA) ────────────────────────────────────
+    // page_id vai dentro do user_data (não no evento raiz)
+    if (page_id) userData.page_id = page_id;
     event.action_source     = 'business_messaging';
     event.messaging_channel = 'whatsapp';
     event.messaging_outcome_data = { outcome_type: 'purchase' };
-    if (page_id) event.page_id = page_id;
   } else {
     // ── Modo Pixel de Site (MASTER COMPRAS, etc) ────────────────────────────
     event.action_source = 'website';
   }
 
   const payload = { data: [event] };
-  if (test_event_code) payload.test_event_code = test_event_code;
 
   // Log para debug
   console.log('[Meta CAPI] pixel=' + pixel_id +
